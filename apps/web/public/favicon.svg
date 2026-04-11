@@ -7,7 +7,7 @@
   </defs>
   <rect width="64" height="64" rx="14" fill="url(#g)"/>
   <text
-    x="32" y="33"
+    x="30" y="32"
     text-anchor="middle"
     dominant-baseline="central"
     fill="white"
@@ -15,6 +15,6 @@
     font-weight="900"
     font-size="36"
     font-style="italic"
-    letter-spacing="-2"
+    letter-spacing="0"
   >JA</text>
 </svg>
