@@ -11,8 +11,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@jauto/core": "workspace:*",
     "@jauto/ui": "workspace:*",
     "@jauto/file-io": "workspace:*",
+    "lucide-vue-next": "^1",
     "vue": "^3",
     "pinia": "^3",
     "vue-router": "^4"

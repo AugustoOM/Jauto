@@ -17,16 +17,17 @@
   },
   "dependencies": {
     "@jauto/core": "workspace:*",
-    "@jauto/simulator": "workspace:*"
+    "@jauto/simulator": "workspace:*",
+    "lucide-vue-next": "^1.0.0"
   },
   "peerDependencies": {
-    "vue": "^3",
-    "pinia": "^3"
+    "pinia": "^3",
+    "vue": "^3"
   },
   "devDependencies": {
-    "vue": "^3",
     "pinia": "^3",
     "typescript": "^5.8",
+    "vue": "^3",
     "vue-tsc": "^2"
   }
 }

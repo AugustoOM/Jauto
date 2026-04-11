@@ -1,12 +1,35 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { EditorView, useDocumentStore, useHistoryStore } from '@jauto/ui';
+import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
+import type { AutomatonKind } from '@jauto/core';
 import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
+const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+
+function handleNew(kind: AutomatonKind) {
+  docStore.newDocument(kind);
+  historyStore.clear();
+  simStore.stop();
+  updateTitle();
+}
+
+async function handleOpen() {
+  try {
+    const result = await openAutomaton(fileService);
+    if (result) {
+      docStore.loadAutomaton(result.automaton, result.fileName);
+      historyStore.clear();
+      simStore.stop();
+      updateTitle();
+    }
+  } catch (err) {
+    console.error('Failed to open:', err);
+  }
+}
 
 onMounted(() => {
   if (!window.electronAPI) return;
@@ -16,26 +39,23 @@ onMounted(() => {
       case 'menu:new-fa':
         docStore.newDocument('fa');
         historyStore.clear();
+        simStore.stop();
+        updateTitle();
         break;
       case 'menu:new-pda':
         docStore.newDocument('pda');
         historyStore.clear();
+        simStore.stop();
+        updateTitle();
         break;
       case 'menu:new-tm':
         docStore.newDocument('turing');
         historyStore.clear();
+        simStore.stop();
+        updateTitle();
         break;
       case 'menu:open':
-        try {
-          const result = await openAutomaton(fileService);
-          if (result) {
-            docStore.loadAutomaton(result.automaton, result.fileName);
-            historyStore.clear();
-            updateTitle();
-          }
-        } catch (err) {
-          console.error('Failed to open:', err);
-        }
+        await handleOpen();
         break;
       case 'menu:save':
         try {
@@ -52,7 +72,8 @@ onMounted(() => {
         if (canvas) {
           canvas.toBlob(async (blob) => {
             if (blob) {
-              const pngName = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
+              const pngName =
+                (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
               await fileService.exportImage(blob, pngName);
             }
           });
@@ -64,6 +85,10 @@ onMounted(() => {
         break;
       case 'menu:redo':
         historyStore.redo();
+        break;
+      case 'menu:home':
+        simStore.stop();
+        docStore.goHome();
         break;
     }
   });
@@ -80,9 +105,14 @@ function updateTitle() {
 
 <template>
   <div class="app">
-    <main class="app-main">
-      <EditorView />
-    </main>
+    <template v-if="docStore.currentView === 'home'">
+      <HomePage @new="handleNew" @open="handleOpen" />
+    </template>
+    <template v-else>
+      <main class="app-main">
+        <EditorView />
+      </main>
+    </template>
   </div>
 </template>
 
