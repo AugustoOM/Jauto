@@ -3,6 +3,7 @@ import type { Component } from 'vue';
 import type { AutomatonKind } from '@jauto/core';
 import { Workflow, Layers, Cpu, FolderOpen } from 'lucide-vue-next';
 import ThemeToggle from './ThemeToggle.vue';
+import logoFull from '../assets/logo.png';
 
 const emit = defineEmits<{
   (e: 'new', kind: AutomatonKind): void;
@@ -38,8 +39,7 @@ const automatonTypes: { kind: AutomatonKind; title: string; description: string;
     </div>
     <div class="home__container">
       <header class="home__header">
-        <div class="home__logo">J</div>
-        <h1 class="home__title">Jauto</h1>
+        <img :src="logoFull" alt="JAuto" class="home__logo" />
         <p class="home__subtitle">
           A modern, open-source tool for formal languages and automata
         </p>
@@ -125,26 +125,9 @@ const automatonTypes: { kind: AutomatonKind; title: string; description: string;
 }
 
 .home__logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: var(--color-primary);
-  color: white;
-  font-size: 32px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-  box-shadow: 0 4px 12px rgba(66, 99, 235, 0.25);
-}
-
-.home__title {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  margin: 0;
+  width: 280px;
+  height: auto;
+  margin-bottom: 4px;
 }
 
 .home__subtitle {

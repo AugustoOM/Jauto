@@ -1,6 +1,10 @@
-# Jauto
+<p align="center">
+  <img src="images/Logo.png" alt="JAuto" width="400" />
+</p>
 
-Modern, open-source replacement for JFLAP 7.1 — a tool for experimenting with formal languages and automata.
+<p align="center">
+  Modern, open-source replacement for JFLAP 7.1 — a tool for experimenting with formal languages and automata.
+</p>
 
 ## Features (MVP)
 
