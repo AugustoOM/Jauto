@@ -1,0 +1,19 @@
+appId: com.jauto.app
+productName: Jauto
+directories:
+  buildResources: build
+  output: release
+files:
+  - dist/**/*
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-${version}-Setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+mac:
+  target:
+    - dmg
+  artifactName: ${productName}-${version}.${ext}
+  category: public.app-category.education

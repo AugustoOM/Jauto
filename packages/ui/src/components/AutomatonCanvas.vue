@@ -1,45 +1,130 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useDocumentStore } from '../stores/document';
+import { useCanvasRenderer } from '../composables/useCanvasRenderer';
+import { usePanZoom } from '../composables/usePanZoom';
+import { useInteractionManager } from '../composables/useInteractionManager';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const docStore = useDocumentStore();
+const { render } = useCanvasRenderer();
+const panZoom = usePanZoom();
+const interaction = useInteractionManager(panZoom.screenToWorld);
 
-onMounted(() => {
+let animFrameId = 0;
+
+function draw() {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const resize = () => {
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    canvas.width = parent.clientWidth;
-    canvas.height = parent.clientHeight;
-    draw(ctx, canvas.width, canvas.height);
-  };
+  render(ctx, canvas.width, canvas.height, docStore.automaton, {
+    offsetX: panZoom.offsetX.value,
+    offsetY: panZoom.offsetY.value,
+    scale: panZoom.scale.value,
+    selected: docStore.selectedElement,
+  });
 
+  if (interaction.isDrawingTransition.value && interaction.transitionSourceId.value) {
+    const source = docStore.automaton.states.find(
+      (s) => s.id === interaction.transitionSourceId.value,
+    );
+    const end = interaction.transitionPreviewEnd.value;
+    if (source && end) {
+      ctx.save();
+      ctx.translate(panZoom.offsetX.value, panZoom.offsetY.value);
+      ctx.scale(panZoom.scale.value, panZoom.scale.value);
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#4263eb';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+}
+
+function loop() {
+  draw();
+  animFrameId = requestAnimationFrame(loop);
+}
+
+function resize() {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const parent = canvas.parentElement;
+  if (!parent) return;
+  canvas.width = parent.clientWidth;
+  canvas.height = parent.clientHeight;
+}
+
+function getCanvasRect(): DOMRect {
+  return canvasRef.value!.getBoundingClientRect();
+}
+
+function handleMouseDown(e: MouseEvent) {
+  if (e.button === 1) {
+    panZoom.onPanStart(e);
+    return;
+  }
+  if (e.button === 0) {
+    interaction.onMouseDown(e, getCanvasRect());
+  }
+}
+
+function handleMouseMove(e: MouseEvent) {
+  panZoom.onPanMove(e);
+  interaction.onMouseMove(e, getCanvasRect());
+}
+
+function handleMouseUp(e: MouseEvent) {
+  panZoom.onPanEnd();
+  if (e.button === 0) {
+    interaction.onMouseUp(e, getCanvasRect());
+  }
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  interaction.onKeyDown(e);
+}
+
+onMounted(() => {
   resize();
+  loop();
   window.addEventListener('resize', resize);
+  window.addEventListener('keydown', handleKeyDown);
 });
 
-function draw(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.clearRect(0, 0, width, height);
+onUnmounted(() => {
+  cancelAnimationFrame(animFrameId);
+  window.removeEventListener('resize', resize);
+  window.removeEventListener('keydown', handleKeyDown);
+});
 
-  ctx.fillStyle = '#f8f9fa';
-  ctx.fillRect(0, 0, width, height);
+watch(
+  () => docStore.automaton.states,
+  () => {
+    /* triggers redraw on next frame */
+  },
+);
 
-  ctx.fillStyle = '#6c757d';
-  ctx.font = '16px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Jauto — Automaton Canvas', width / 2, height / 2);
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillStyle = '#adb5bd';
-  ctx.fillText('The graph editor will render here', width / 2, height / 2 + 28);
-}
+defineExpose({ panZoom });
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="automaton-canvas" />
+  <canvas
+    ref="canvasRef"
+    class="automaton-canvas"
+    @mousedown="handleMouseDown"
+    @mousemove="handleMouseMove"
+    @mouseup="handleMouseUp"
+    @wheel="panZoom.onWheel"
+    @contextmenu.prevent
+  />
 </template>
 
 <style scoped>
@@ -47,5 +132,6 @@ function draw(ctx: CanvasRenderingContext2D, width: number, height: number) {
   display: block;
   width: 100%;
   height: 100%;
+  cursor: crosshair;
 }
 </style>
