@@ -17,9 +17,10 @@ export function createPDARunner(
 ): SimulationRunner<PDAConfig> {
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
+  const initialId = initialState.id;
 
   let configs: PDAConfiguration[] = [
-    { state: initialState.id, remaining: input, inputIndex: 0, stack: [] },
+    { state: initialId, remaining: input, inputIndex: 0, stack: [] },
   ];
   let stepIndex = 0;
   let accepted = false;
@@ -127,7 +128,7 @@ export function createPDARunner(
   }
 
   function reset() {
-    configs = [{ state: initialState.id, remaining: input, inputIndex: 0, stack: [] }];
+    configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: [] }];
     stepIndex = 0;
     accepted = false;
   }

@@ -48,7 +48,7 @@ function toggleFinal() {
 function updateTransitionField(field: string, value: string) {
   const trans = selectedTransition.value;
   if (!trans) return;
-  const oldProps = { [field]: (trans as Record<string, unknown>)[field] };
+  const oldProps = { [field]: (trans as unknown as Record<string, unknown>)[field] };
   const newProps = { [field]: value };
   historyStore.dispatch(new UpdateTransitionCommand(trans.id, oldProps, newProps));
 }
