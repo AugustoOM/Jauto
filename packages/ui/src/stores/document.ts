@@ -59,6 +59,13 @@ export const useDocumentStore = defineStore('document', () => {
     activeTool.value = tool;
   }
 
+  function rename(name: string) {
+    const normalized = name.trim();
+    if (normalized) {
+      fileName.value = normalized.endsWith('.jff') ? normalized : `${normalized}.jff`;
+    }
+  }
+
   function markSaved(name?: string) {
     isDirty.value = false;
     if (name) fileName.value = name;
@@ -77,6 +84,7 @@ export const useDocumentStore = defineStore('document', () => {
     loadAutomaton,
     newDocument,
     goHome,
+    rename,
     select,
     clearSelection,
     setTool,
