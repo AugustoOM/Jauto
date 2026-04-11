@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useDocumentStore } from '../stores/document';
+import { useSimulationStore } from '../stores/simulation';
 import { useCanvasRenderer } from '../composables/useCanvasRenderer';
 import { usePanZoom } from '../composables/usePanZoom';
 import { useInteractionManager } from '../composables/useInteractionManager';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const docStore = useDocumentStore();
+const simStore = useSimulationStore();
 const { render } = useCanvasRenderer();
 const panZoom = usePanZoom();
 const interaction = useInteractionManager(panZoom.screenToWorld);
@@ -24,6 +26,7 @@ function draw() {
     offsetY: panZoom.offsetY.value,
     scale: panZoom.scale.value,
     selected: docStore.selectedElement,
+    highlightedStates: simStore.highlightedStates,
   });
 
   if (interaction.isDrawingTransition.value && interaction.transitionSourceId.value) {
@@ -71,9 +74,7 @@ function handleMouseDown(e: MouseEvent) {
     panZoom.onPanStart(e);
     return;
   }
-  if (e.button === 0) {
-    interaction.onMouseDown(e, getCanvasRect());
-  }
+  interaction.onMouseDown(e, getCanvasRect());
 }
 
 function handleMouseMove(e: MouseEvent) {
@@ -83,9 +84,7 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp(e: MouseEvent) {
   panZoom.onPanEnd();
-  if (e.button === 0) {
-    interaction.onMouseUp(e, getCanvasRect());
-  }
+  interaction.onMouseUp(e, getCanvasRect());
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -132,6 +131,6 @@ defineExpose({ panZoom });
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  cursor: default;
 }
 </style>

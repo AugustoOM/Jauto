@@ -35,73 +35,88 @@ export function useInteractionManager(
 
   let nextStateNum = 0;
 
-  function onMouseDown(e: MouseEvent, canvasRect: DOMRect) {
-    const sx = e.clientX - canvasRect.left;
-    const sy = e.clientY - canvasRect.top;
-    const { x, y } = screenToWorld(sx, sy);
-    const tool = docStore.activeTool;
+  function toWorld(e: MouseEvent, canvasRect: DOMRect) {
+    return screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
+  }
 
-    if (tool === 'select') {
-      const hitState = hitTestState(x, y, docStore.automaton.states);
-      if (hitState) {
-        docStore.select({ type: 'state', id: hitState.id });
-        isDragging.value = true;
-        dragStateId.value = hitState.id;
-        dragStartX.value = hitState.x;
-        dragStartY.value = hitState.y;
-        return;
-      }
+  function addStateAt(x: number, y: number) {
+    const name = `q${nextStateNum++}`;
+    const newState: AutomatonState = {
+      id: generateStateId(),
+      name,
+      x,
+      y,
+      isInitial: docStore.automaton.states.length === 0,
+      isFinal: false,
+    };
+    historyStore.dispatch(new AddStateCommand(newState));
+    docStore.select({ type: 'state', id: newState.id });
+  }
 
-      const hitTrans = hitTestTransition(x, y, docStore.automaton);
-      if (hitTrans) {
-        docStore.select({ type: 'transition', id: hitTrans.id });
-        return;
-      }
-
+  function deleteAt(x: number, y: number) {
+    const hitState = hitTestState(x, y, docStore.automaton.states);
+    if (hitState) {
+      const from = getTransitionsFrom(docStore.automaton, hitState.id);
+      const to = getTransitionsTo(docStore.automaton, hitState.id);
+      const allConnected = [...from, ...to];
+      const unique = [...new Map(allConnected.map((t) => [t.id, t])).values()];
+      historyStore.dispatch(new RemoveStateCommand(hitState, unique));
       docStore.clearSelection();
-    } else if (tool === 'add-state') {
-      const name = `q${nextStateNum++}`;
-      const newState: AutomatonState = {
-        id: generateStateId(),
-        name,
-        x,
-        y,
-        isInitial: docStore.automaton.states.length === 0,
-        isFinal: false,
-      };
-      historyStore.dispatch(new AddStateCommand(newState));
-      docStore.select({ type: 'state', id: newState.id });
-    } else if (tool === 'add-transition') {
+      return;
+    }
+
+    const hitTrans = hitTestTransition(x, y, docStore.automaton);
+    if (hitTrans) {
+      historyStore.dispatch(new RemoveTransitionCommand(hitTrans));
+      docStore.clearSelection();
+    }
+  }
+
+  function onMouseDown(e: MouseEvent, canvasRect: DOMRect) {
+    const { x, y } = toWorld(e, canvasRect);
+
+    if (e.button === 2) {
+      if (e.ctrlKey || e.metaKey) {
+        deleteAt(x, y);
+      } else {
+        addStateAt(x, y);
+      }
+      return;
+    }
+
+    if (e.button !== 0) return;
+
+    if (e.shiftKey) {
       const hitState = hitTestState(x, y, docStore.automaton.states);
       if (hitState) {
         isDrawingTransition.value = true;
         transitionSourceId.value = hitState.id;
         transitionPreviewEnd.value = { x, y };
       }
-    } else if (tool === 'delete') {
-      const hitState = hitTestState(x, y, docStore.automaton.states);
-      if (hitState) {
-        const from = getTransitionsFrom(docStore.automaton, hitState.id);
-        const to = getTransitionsTo(docStore.automaton, hitState.id);
-        const allConnected = [...from, ...to];
-        const unique = [...new Map(allConnected.map((t) => [t.id, t])).values()];
-        historyStore.dispatch(new RemoveStateCommand(hitState, unique));
-        docStore.clearSelection();
-        return;
-      }
-
-      const hitTrans = hitTestTransition(x, y, docStore.automaton);
-      if (hitTrans) {
-        historyStore.dispatch(new RemoveTransitionCommand(hitTrans));
-        docStore.clearSelection();
-      }
+      return;
     }
+
+    const hitState = hitTestState(x, y, docStore.automaton.states);
+    if (hitState) {
+      docStore.select({ type: 'state', id: hitState.id });
+      isDragging.value = true;
+      dragStateId.value = hitState.id;
+      dragStartX.value = hitState.x;
+      dragStartY.value = hitState.y;
+      return;
+    }
+
+    const hitTrans = hitTestTransition(x, y, docStore.automaton);
+    if (hitTrans) {
+      docStore.select({ type: 'transition', id: hitTrans.id });
+      return;
+    }
+
+    docStore.clearSelection();
   }
 
   function onMouseMove(e: MouseEvent, canvasRect: DOMRect) {
-    const sx = e.clientX - canvasRect.left;
-    const sy = e.clientY - canvasRect.top;
-    const { x, y } = screenToWorld(sx, sy);
+    const { x, y } = toWorld(e, canvasRect);
 
     if (isDragging.value && dragStateId.value) {
       docStore.setAutomaton(
@@ -138,9 +153,7 @@ export function useInteractionManager(
     }
 
     if (isDrawingTransition.value && transitionSourceId.value) {
-      const sx = e.clientX - (e.target as HTMLElement).getBoundingClientRect().left;
-      const sy = e.clientY - (e.target as HTMLElement).getBoundingClientRect().top;
-      const { x, y } = screenToWorld(sx, sy);
+      const { x, y } = toWorld(e, canvasRect);
       const targetState = hitTestState(x, y, docStore.automaton.states);
 
       if (targetState) {

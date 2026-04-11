@@ -1,9 +1,10 @@
+import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import type { SimulationRunner, StepResult, SimulationStatus } from '@jauto/simulator';
 import { createDFARunner, createNFARunner, createPDARunner, createTMRunner } from '@jauto/simulator';
 import type { AnyAutomaton, FiniteAutomaton, PushdownAutomaton, TuringMachine } from '@jauto/core';
 
-export function useSimulation() {
+export const useSimulationStore = defineStore('simulation', () => {
   const input = ref('');
   const isRunning = ref(false);
   const status = ref<SimulationStatus | null>(null);
@@ -17,7 +18,7 @@ export function useSimulation() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const traceSteps = ref<StepResult<any>[]>([]);
 
-  function createRunner(automaton: AnyAutomaton, inputStr: string) {
+  function createRunnerFor(automaton: AnyAutomaton, inputStr: string) {
     switch (automaton.kind) {
       case 'fa':
         return createDFARunner(automaton as FiniteAutomaton, inputStr);
@@ -28,10 +29,26 @@ export function useSimulation() {
     }
   }
 
+  function updateHighlights() {
+    if (!runner) {
+      highlightedStates.value = new Set();
+      return;
+    }
+    const config = runner.currentConfig;
+    const states = new Set<string>();
+    if ('currentState' in config && config.currentState) {
+      states.add(config.currentState as string);
+    }
+    if ('activeStates' in config && config.activeStates instanceof Set) {
+      for (const s of config.activeStates) states.add(s as string);
+    }
+    highlightedStates.value = states;
+  }
+
   function start(automaton: AnyAutomaton) {
     stop();
     try {
-      runner = createRunner(automaton, input.value);
+      runner = createRunnerFor(automaton, input.value);
     } catch {
       status.value = 'rejected';
       return;
@@ -85,22 +102,6 @@ export function useSimulation() {
     start(automaton);
   }
 
-  function updateHighlights() {
-    if (!runner) {
-      highlightedStates.value = new Set();
-      return;
-    }
-    const config = runner.currentConfig;
-    const states = new Set<string>();
-    if ('currentState' in config && config.currentState) {
-      states.add(config.currentState as string);
-    }
-    if ('activeStates' in config && config.activeStates instanceof Set) {
-      for (const s of config.activeStates) states.add(s as string);
-    }
-    highlightedStates.value = states;
-  }
-
   watch(speed, () => {
     if (isRunning.value && intervalId !== null) {
       clearInterval(intervalId);
@@ -129,4 +130,4 @@ export function useSimulation() {
     stop,
     reset,
   };
-}
+});
