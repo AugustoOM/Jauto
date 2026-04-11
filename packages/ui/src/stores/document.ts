@@ -16,6 +16,7 @@ export const useDocumentStore = defineStore('document', () => {
   const isDirty = ref(false);
   const selectedElement = ref<SelectedElement>(null);
   const activeTool = ref<EditorTool>('select');
+  const heldModifier = ref<'shift' | 'ctrl' | null>(null);
 
   const automatonKind = computed<AutomatonKind>(() => automaton.value.kind);
 
@@ -61,6 +62,7 @@ export const useDocumentStore = defineStore('document', () => {
     isDirty,
     selectedElement,
     activeTool,
+    heldModifier,
     automatonKind,
     setAutomaton,
     loadAutomaton,

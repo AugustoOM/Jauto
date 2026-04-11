@@ -33,14 +33,24 @@ export function useInteractionManager(
   const transitionSourceId = ref<string | null>(null);
   const transitionPreviewEnd = ref<{ x: number; y: number } | null>(null);
 
-  let nextStateNum = 0;
-
   function toWorld(e: MouseEvent, canvasRect: DOMRect) {
     return screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   }
 
+  function nextStateName(): string {
+    let max = -1;
+    for (const s of docStore.automaton.states) {
+      const match = /^q(\d+)$/.exec(s.name);
+      if (match) {
+        const n = parseInt(match[1]!, 10);
+        if (n > max) max = n;
+      }
+    }
+    return `q${max + 1}`;
+  }
+
   function addStateAt(x: number, y: number) {
-    const name = `q${nextStateNum++}`;
+    const name = nextStateName();
     const newState: AutomatonState = {
       id: generateStateId(),
       name,

@@ -89,6 +89,21 @@ function handleMouseUp(e: MouseEvent) {
 
 function handleKeyDown(e: KeyboardEvent) {
   interaction.onKeyDown(e);
+  updateModifier(e);
+}
+
+function handleKeyUp(e: KeyboardEvent) {
+  updateModifier(e);
+}
+
+function updateModifier(e: KeyboardEvent) {
+  if (e.shiftKey) docStore.heldModifier = 'shift';
+  else if (e.ctrlKey || e.metaKey) docStore.heldModifier = 'ctrl';
+  else docStore.heldModifier = null;
+}
+
+function handleWindowBlur() {
+  docStore.heldModifier = null;
 }
 
 onMounted(() => {
@@ -96,12 +111,17 @@ onMounted(() => {
   loop();
   window.addEventListener('resize', resize);
   window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+  window.addEventListener('blur', handleWindowBlur);
 });
 
 onUnmounted(() => {
   cancelAnimationFrame(animFrameId);
   window.removeEventListener('resize', resize);
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
+  window.removeEventListener('blur', handleWindowBlur);
+  docStore.heldModifier = null;
 });
 
 watch(
