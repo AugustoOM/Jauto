@@ -9,8 +9,10 @@ export type SelectedElement =
   | null;
 
 export type EditorTool = 'select' | 'add-state' | 'add-transition' | 'delete';
+export type AppView = 'home' | 'editor';
 
 export const useDocumentStore = defineStore('document', () => {
+  const currentView = ref<AppView>('home');
   const automaton = ref<AnyAutomaton>(createEmptyAutomaton('fa'));
   const fileName = ref<string | null>(null);
   const isDirty = ref(false);
@@ -30,6 +32,7 @@ export const useDocumentStore = defineStore('document', () => {
     fileName.value = name;
     isDirty.value = false;
     selectedElement.value = null;
+    currentView.value = 'editor';
   }
 
   function newDocument(kind: AutomatonKind) {
@@ -37,6 +40,11 @@ export const useDocumentStore = defineStore('document', () => {
     fileName.value = null;
     isDirty.value = false;
     selectedElement.value = null;
+    currentView.value = 'editor';
+  }
+
+  function goHome() {
+    currentView.value = 'home';
   }
 
   function select(element: SelectedElement) {
@@ -57,6 +65,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   return {
+    currentView,
     automaton,
     fileName,
     isDirty,
@@ -67,6 +76,7 @@ export const useDocumentStore = defineStore('document', () => {
     setAutomaton,
     loadAutomaton,
     newDocument,
+    goHome,
     select,
     clearSelection,
     setTool,

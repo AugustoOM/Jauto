@@ -11,6 +11,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@jauto/core": "workspace:*",
     "@jauto/ui": "workspace:*",
     "@jauto/file-io": "workspace:*",
     "vue": "^3",

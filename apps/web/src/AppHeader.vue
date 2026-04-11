@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useDocumentStore } from '@jauto/ui';
+import { useDocumentStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
 
 const docStore = useDocumentStore();
 const fileService = new WebFileService();
 const openMenu = ref<string | null>(null);
-const theme = ref<'light' | 'dark'>('light');
 
 function toggleMenu(menu: string) {
   openMenu.value = openMenu.value === menu ? null : menu;
@@ -15,6 +14,11 @@ function toggleMenu(menu: string) {
 
 function closeMenu() {
   openMenu.value = null;
+}
+
+function goHome() {
+  closeMenu();
+  docStore.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
@@ -57,16 +61,11 @@ async function exportPNG() {
   });
 }
 
-function toggleTheme() {
-  theme.value = theme.value === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', theme.value);
-  closeMenu();
-}
 </script>
 
 <template>
   <header class="app-header" @mouseleave="closeMenu">
-    <div class="app-header__brand">Jauto</div>
+    <button class="app-header__brand" @click="goHome" title="Back to Home">Jauto</button>
     <nav class="app-header__nav">
       <div class="app-header__menu-group">
         <button class="app-header__nav-btn" @click="toggleMenu('file')">File</button>
@@ -82,16 +81,8 @@ function toggleTheme() {
         </div>
       </div>
 
-      <div class="app-header__menu-group">
-        <button class="app-header__nav-btn" @click="toggleMenu('view')">View</button>
-        <div v-if="openMenu === 'view'" class="app-header__dropdown">
-          <button class="app-header__dropdown-item" @click="toggleTheme">
-            {{ theme === 'light' ? 'Dark Mode' : 'Light Mode' }}
-          </button>
-        </div>
-      </div>
     </nav>
-    <div class="app-header__file-info">
+    <div class="app-header__right">
       <span v-if="docStore.fileName" class="app-header__filename">
         {{ docStore.fileName }}{{ docStore.isDirty ? ' *' : '' }}
       </span>
@@ -99,6 +90,7 @@ function toggleTheme() {
         untitled{{ docStore.isDirty ? ' *' : '' }}
       </span>
       <span class="app-header__kind">{{ docStore.automatonKind.toUpperCase() }}</span>
+      <ThemeToggle />
     </div>
   </header>
 </template>
@@ -121,6 +113,16 @@ function toggleTheme() {
   font-size: 15px;
   color: var(--color-primary);
   letter-spacing: -0.02em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+
+.app-header__brand:hover {
+  background: rgba(66, 99, 235, 0.1);
 }
 
 .app-header__nav {
@@ -183,11 +185,11 @@ function toggleTheme() {
   background: var(--color-border);
 }
 
-.app-header__file-info {
+.app-header__right {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 12px;
 }
 

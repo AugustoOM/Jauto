@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type Component } from 'vue';
+import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2 } from 'lucide-vue-next';
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
 
-const tools: { id: EditorTool; label: string; shortcut: string; icon: string }[] = [
-  { id: 'select', label: 'Select', shortcut: 'Click', icon: '⊹' },
-  { id: 'add-state', label: 'Add State', shortcut: 'Right Click', icon: '◯' },
-  { id: 'add-transition', label: 'Add Transition', shortcut: 'Shift + Click', icon: '→' },
-  { id: 'delete', label: 'Delete', shortcut: 'Ctrl + Right Click', icon: '✕' },
+const tools: { id: EditorTool; label: string; shortcut: string; icon: Component }[] = [
+  { id: 'select', label: 'Select', shortcut: 'Click', icon: MousePointer2 },
+  { id: 'add-state', label: 'Add State', shortcut: 'Right Click', icon: Circle },
+  { id: 'add-transition', label: 'Add Transition', shortcut: 'Shift + Click', icon: MoveRight },
+  { id: 'delete', label: 'Delete', shortcut: 'Ctrl + Right Click', icon: Trash2 },
 ];
 
 const modifierTool = computed<EditorTool | null>(() => {
@@ -38,7 +39,7 @@ function selectTool(tool: EditorTool) {
         :title="`${tool.label} (${tool.shortcut})`"
         @click="selectTool(tool.id)"
       >
-        <span class="toolbar__icon">{{ tool.icon }}</span>
+        <component :is="tool.icon" :size="14" class="toolbar__icon" />
         <span class="toolbar__label">{{ tool.label }}</span>
       </button>
     </div>
@@ -50,7 +51,7 @@ function selectTool(tool: EditorTool) {
         title="Undo"
         @click="historyStore.undo()"
       >
-        <span class="toolbar__icon">↩</span>
+        <Undo2 :size="14" class="toolbar__icon" />
         <span class="toolbar__label">Undo</span>
       </button>
       <button
@@ -59,7 +60,7 @@ function selectTool(tool: EditorTool) {
         title="Redo"
         @click="historyStore.redo()"
       >
-        <span class="toolbar__icon">↪</span>
+        <Redo2 :size="14" class="toolbar__icon" />
         <span class="toolbar__label">Redo</span>
       </button>
     </div>
@@ -137,8 +138,7 @@ function selectTool(tool: EditorTool) {
 }
 
 .toolbar__icon {
-  font-size: 14px;
-  line-height: 1;
+  flex-shrink: 0;
 }
 
 .toolbar__label {

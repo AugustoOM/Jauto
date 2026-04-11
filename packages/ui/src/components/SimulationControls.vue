@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Play, Pause, SkipForward, RotateCcw, Square, Zap } from 'lucide-vue-next';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 
@@ -35,7 +36,7 @@ function handleReset() {
         class="sim-controls__btn sim-controls__btn--primary"
         @click="handleStart"
       >
-        Start
+        <Zap :size="13" /> Start
       </button>
       <template v-else>
         <button
@@ -44,7 +45,7 @@ function handleReset() {
           :disabled="sim.status !== 'running'"
           @click="sim.step()"
         >
-          Step
+          <SkipForward :size="13" /> Step
         </button>
         <button
           v-if="!sim.isRunning"
@@ -52,20 +53,20 @@ function handleReset() {
           :disabled="sim.status !== 'running'"
           @click="handlePlay"
         >
-          Play
+          <Play :size="13" /> Play
         </button>
         <button
           v-if="sim.isRunning"
           class="sim-controls__btn"
           @click="sim.pause()"
         >
-          Pause
+          <Pause :size="13" /> Pause
         </button>
         <button class="sim-controls__btn" @click="handleReset">
-          Reset
+          <RotateCcw :size="13" /> Reset
         </button>
         <button class="sim-controls__btn" @click="sim.stop()">
-          Stop
+          <Square :size="13" /> Stop
         </button>
       </template>
     </div>
@@ -145,6 +146,9 @@ function handleReset() {
 }
 
 .sim-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 5px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
