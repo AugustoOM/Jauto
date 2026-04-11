@@ -8,9 +8,10 @@ export function createDFARunner(
 ): SimulationRunner<DFAConfig> {
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
+  const initialId = initialState.id;
 
   let config: DFAConfig = {
-    currentState: initialState.id,
+    currentState: initialId,
     remainingInput: input,
     inputIndex: 0,
   };
@@ -61,7 +62,7 @@ export function createDFARunner(
   }
 
   function reset() {
-    config = { currentState: initialState.id, remainingInput: input, inputIndex: 0 };
+    config = { currentState: initialId, remainingInput: input, inputIndex: 0 };
     stepIndex = 0;
     halted = false;
   }

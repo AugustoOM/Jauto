@@ -4,5 +4,4 @@ export default defineWorkspace([
   'packages/core',
   'packages/jff',
   'packages/simulator',
-  'packages/file-io',
 ]);

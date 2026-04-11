@@ -53,7 +53,7 @@ export function useCanvasRenderer() {
       ctx.font = '14px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('Click the canvas to add a state', width / 2, height / 2);
+      ctx.fillText('Right-click the canvas to add a state', width / 2, height / 2);
       return;
     }
 
@@ -98,12 +98,21 @@ export function useCanvasRenderer() {
   ) {
     const { x, y } = state;
 
+    if (isHighlighted) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, STATE_RADIUS + 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(66, 99, 235, 0.12)';
+      ctx.fill();
+      ctx.restore();
+    }
+
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = isHighlighted ? '#d0ebff' : '#ffffff';
+    ctx.fillStyle = isHighlighted ? '#dbe4ff' : '#ffffff';
     ctx.fill();
-    ctx.strokeStyle = isSelected ? '#4263eb' : '#343a40';
-    ctx.lineWidth = isSelected ? 2.5 : 1.5;
+    ctx.strokeStyle = isHighlighted ? '#4263eb' : isSelected ? '#4263eb' : '#343a40';
+    ctx.lineWidth = isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
     if (state.isFinal) {

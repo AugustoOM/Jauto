@@ -5,5 +5,6 @@ export { default as InspectorPanel } from './components/InspectorPanel.vue';
 
 export { useDocumentStore } from './stores/document';
 export { useHistoryStore } from './stores/history';
+export { useSimulationStore } from './stores/simulation';
 
 export type { SelectedElement, EditorTool } from './stores/document';

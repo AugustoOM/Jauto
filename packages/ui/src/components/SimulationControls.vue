@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useDocumentStore } from '../stores/document';
-import { useSimulation } from '../composables/useSimulation';
+import { useSimulationStore } from '../stores/simulation';
 
 const docStore = useDocumentStore();
-const sim = useSimulation();
+const sim = useSimulationStore();
 
 function handleStart() {
   sim.start(docStore.automaton);
@@ -16,8 +16,6 @@ function handlePlay() {
 function handleReset() {
   sim.reset(docStore.automaton);
 }
-
-defineExpose({ sim });
 </script>
 
 <template>
@@ -25,15 +23,15 @@ defineExpose({ sim });
     <div class="sim-controls__input-row">
       <label class="sim-controls__label">Input</label>
       <input
-        v-model="sim.input.value"
+        v-model="sim.input"
         class="sim-controls__input"
         placeholder="Enter input string..."
-        :disabled="sim.isActive.value"
+        :disabled="sim.isActive"
       />
     </div>
     <div class="sim-controls__buttons">
       <button
-        v-if="!sim.isActive.value"
+        v-if="!sim.isActive"
         class="sim-controls__btn sim-controls__btn--primary"
         @click="handleStart"
       >
@@ -41,23 +39,23 @@ defineExpose({ sim });
       </button>
       <template v-else>
         <button
-          v-if="!sim.isRunning.value"
+          v-if="!sim.isRunning"
           class="sim-controls__btn"
-          :disabled="sim.status.value !== 'running'"
+          :disabled="sim.status !== 'running'"
           @click="sim.step()"
         >
           Step
         </button>
         <button
-          v-if="!sim.isRunning.value"
+          v-if="!sim.isRunning"
           class="sim-controls__btn sim-controls__btn--primary"
-          :disabled="sim.status.value !== 'running'"
+          :disabled="sim.status !== 'running'"
           @click="handlePlay"
         >
           Play
         </button>
         <button
-          v-if="sim.isRunning.value"
+          v-if="sim.isRunning"
           class="sim-controls__btn"
           @click="sim.pause()"
         >
@@ -71,31 +69,31 @@ defineExpose({ sim });
         </button>
       </template>
     </div>
-    <div v-if="sim.isActive.value" class="sim-controls__status">
-      <span class="sim-controls__step">Step {{ sim.stepIndex.value }}</span>
+    <div v-if="sim.isActive" class="sim-controls__status">
+      <span class="sim-controls__step">Step {{ sim.stepIndex }}</span>
       <span
         class="sim-controls__result"
         :class="{
-          'sim-controls__result--accepted': sim.status.value === 'accepted',
-          'sim-controls__result--rejected': sim.status.value === 'rejected' || sim.status.value === 'halted',
+          'sim-controls__result--accepted': sim.status === 'accepted',
+          'sim-controls__result--rejected': sim.status === 'rejected' || sim.status === 'halted',
         }"
       >
-        {{ sim.status.value === 'running' ? 'Running...' :
-           sim.status.value === 'accepted' ? 'Accepted' :
-           sim.status.value === 'halted' ? 'Halted' : 'Rejected' }}
+        {{ sim.status === 'running' ? 'Running...' :
+           sim.status === 'accepted' ? 'Accepted' :
+           sim.status === 'halted' ? 'Halted' : 'Rejected' }}
       </span>
     </div>
-    <div v-if="sim.isActive.value" class="sim-controls__speed">
+    <div v-if="sim.isActive" class="sim-controls__speed">
       <label class="sim-controls__label">Speed</label>
       <input
-        v-model.number="sim.speed.value"
+        v-model.number="sim.speed"
         type="range"
         min="50"
         max="2000"
         step="50"
         class="sim-controls__slider"
       />
-      <span class="sim-controls__speed-val">{{ sim.speed.value }}ms</span>
+      <span class="sim-controls__speed-val">{{ sim.speed }}ms</span>
     </div>
   </div>
 </template>

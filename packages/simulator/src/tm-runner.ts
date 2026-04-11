@@ -10,6 +10,7 @@ export function createTMRunner(
 ): SimulationRunner<TMConfig> {
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
+  const initialId = initialState.id;
 
   const initialTape = input.length > 0 ? input.split('') : [BLANK];
 
@@ -106,7 +107,7 @@ export function createTMRunner(
   function reset() {
     tape = [...initialTape];
     headPosition = 0;
-    currentState = initialState.id;
+    currentState = initialId;
     stepCount = 0;
     halted = false;
   }

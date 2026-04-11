@@ -1,16 +1,23 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
 
-const tools: { id: EditorTool; label: string; icon: string }[] = [
-  { id: 'select', label: 'Select', icon: '⊹' },
-  { id: 'add-state', label: 'Add State', icon: '◯' },
-  { id: 'add-transition', label: 'Add Transition', icon: '→' },
-  { id: 'delete', label: 'Delete', icon: '✕' },
+const tools: { id: EditorTool; label: string; shortcut: string; icon: string }[] = [
+  { id: 'select', label: 'Select', shortcut: 'Click', icon: '⊹' },
+  { id: 'add-state', label: 'Add State', shortcut: 'Right Click', icon: '◯' },
+  { id: 'add-transition', label: 'Add Transition', shortcut: 'Shift + Click', icon: '→' },
+  { id: 'delete', label: 'Delete', shortcut: 'Ctrl + Right Click', icon: '✕' },
 ];
+
+const modifierTool = computed<EditorTool | null>(() => {
+  if (docStore.heldModifier === 'shift') return 'add-transition';
+  if (docStore.heldModifier === 'ctrl') return 'delete';
+  return null;
+});
 
 function selectTool(tool: EditorTool) {
   docStore.setTool(tool);
@@ -24,8 +31,11 @@ function selectTool(tool: EditorTool) {
         v-for="tool in tools"
         :key="tool.id"
         class="toolbar__btn"
-        :class="{ 'toolbar__btn--active': docStore.activeTool === tool.id }"
-        :title="tool.label"
+        :class="{
+          'toolbar__btn--active': docStore.activeTool === tool.id,
+          'toolbar__btn--modifier': modifierTool === tool.id,
+        }"
+        :title="`${tool.label} (${tool.shortcut})`"
         @click="selectTool(tool.id)"
       >
         <span class="toolbar__icon">{{ tool.icon }}</span>
@@ -108,6 +118,17 @@ function selectTool(tool: EditorTool) {
 .toolbar__btn--active:hover {
   background: var(--color-primary-hover);
   color: white;
+}
+
+.toolbar__btn--modifier {
+  background: rgba(66, 99, 235, 0.15);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.toolbar__btn--modifier:hover {
+  background: rgba(66, 99, 235, 0.25);
+  color: var(--color-primary);
 }
 
 .toolbar__btn:disabled {

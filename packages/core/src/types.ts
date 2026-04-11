@@ -53,6 +53,7 @@ export type AnyAutomaton = FiniteAutomaton | PushdownAutomaton | TuringMachine;
 export function createEmptyAutomaton(kind: 'fa'): FiniteAutomaton;
 export function createEmptyAutomaton(kind: 'pda'): PushdownAutomaton;
 export function createEmptyAutomaton(kind: 'turing'): TuringMachine;
+export function createEmptyAutomaton(kind: AutomatonKind): AnyAutomaton;
 export function createEmptyAutomaton(kind: AutomatonKind): AnyAutomaton {
   const base = { states: [], transitions: [], meta: {} };
   switch (kind) {
