@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { HomePage, EditorView, useDocumentStore } from '@jauto/ui';
+import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton } from '@jauto/file-io';
 import AppHeader from './AppHeader.vue';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 const docStore = useDocumentStore();
+const historyStore = useHistoryStore();
+const simStore = useSimulationStore();
 const fileService = new WebFileService();
 
 useKeyboardShortcuts();
 
 function handleNew(kind: AutomatonKind) {
   docStore.newDocument(kind);
+  historyStore.clear();
+  simStore.stop();
 }
 
 async function handleOpen() {
@@ -19,6 +23,8 @@ async function handleOpen() {
     const result = await openAutomaton(fileService);
     if (result) {
       docStore.loadAutomaton(result.automaton, result.fileName);
+      historyStore.clear();
+      simStore.stop();
     }
   } catch (err) {
     alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);

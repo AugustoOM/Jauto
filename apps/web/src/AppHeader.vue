@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { Pencil } from 'lucide-vue-next';
-import { useDocumentStore, ThemeToggle } from '@jauto/ui';
+import { useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
 
 const docStore = useDocumentStore();
+const historyStore = useHistoryStore();
+const simStore = useSimulationStore();
 const fileService = new WebFileService();
 const openMenu = ref<string | null>(null);
 const isRenaming = ref(false);
+const renameCancelled = ref(false);
 const renameInput = ref<HTMLInputElement | null>(null);
 const renameValue = ref('');
 
@@ -22,11 +25,14 @@ function closeMenu() {
 
 function goHome() {
   closeMenu();
+  simStore.stop();
   docStore.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
   docStore.newDocument(kind);
+  historyStore.clear();
+  simStore.stop();
   closeMenu();
 }
 
@@ -36,6 +42,8 @@ async function openFile() {
     const result = await openAutomaton(fileService);
     if (result) {
       docStore.loadAutomaton(result.automaton, result.fileName);
+      historyStore.clear();
+      simStore.stop();
     }
   } catch (err) {
     alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
@@ -69,6 +77,7 @@ function startRename() {
   closeMenu();
   const current = docStore.fileName ?? 'untitled.jff';
   renameValue.value = current.replace(/\.jff$/, '');
+  renameCancelled.value = false;
   isRenaming.value = true;
   nextTick(() => {
     renameInput.value?.focus();
@@ -77,6 +86,7 @@ function startRename() {
 }
 
 function commitRename() {
+  if (renameCancelled.value) return;
   const val = renameValue.value.trim();
   if (val) {
     docStore.rename(val);
@@ -85,6 +95,7 @@ function commitRename() {
 }
 
 function cancelRename() {
+  renameCancelled.value = true;
   isRenaming.value = false;
 }
 

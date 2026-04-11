@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { HomePage, EditorView, useDocumentStore, useHistoryStore } from '@jauto/ui';
+import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
+const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
 
 function handleNew(kind: AutomatonKind) {
   docStore.newDocument(kind);
   historyStore.clear();
+  simStore.stop();
   updateTitle();
 }
 
@@ -21,6 +23,7 @@ async function handleOpen() {
     if (result) {
       docStore.loadAutomaton(result.automaton, result.fileName);
       historyStore.clear();
+      simStore.stop();
       updateTitle();
     }
   } catch (err) {
@@ -36,16 +39,19 @@ onMounted(() => {
       case 'menu:new-fa':
         docStore.newDocument('fa');
         historyStore.clear();
+        simStore.stop();
         updateTitle();
         break;
       case 'menu:new-pda':
         docStore.newDocument('pda');
         historyStore.clear();
+        simStore.stop();
         updateTitle();
         break;
       case 'menu:new-tm':
         docStore.newDocument('turing');
         historyStore.clear();
+        simStore.stop();
         updateTitle();
         break;
       case 'menu:open':
@@ -81,6 +87,7 @@ onMounted(() => {
         historyStore.redo();
         break;
       case 'menu:home':
+        simStore.stop();
         docStore.goHome();
         break;
     }
