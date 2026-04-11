@@ -106,6 +106,28 @@ export function useInteractionManager(
       return;
     }
 
+    const tool = docStore.activeTool;
+
+    if (tool === 'add-state') {
+      addStateAt(x, y);
+      return;
+    }
+
+    if (tool === 'delete') {
+      deleteAt(x, y);
+      return;
+    }
+
+    if (tool === 'add-transition') {
+      const hitState = hitTestState(x, y, docStore.automaton.states);
+      if (hitState) {
+        isDrawingTransition.value = true;
+        transitionSourceId.value = hitState.id;
+        transitionPreviewEnd.value = { x, y };
+      }
+      return;
+    }
+
     const hitState = hitTestState(x, y, docStore.automaton.states);
     if (hitState) {
       docStore.select({ type: 'state', id: hitState.id });

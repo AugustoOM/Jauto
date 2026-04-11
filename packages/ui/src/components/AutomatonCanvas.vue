@@ -84,7 +84,9 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp(e: MouseEvent) {
   panZoom.onPanEnd();
-  interaction.onMouseUp(e, getCanvasRect());
+  if (e.button === 0) {
+    interaction.onMouseUp(e, getCanvasRect());
+  }
 }
 
 function handleKeyDown(e: KeyboardEvent) {
