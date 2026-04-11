@@ -1,0 +1,26 @@
+{
+  "name": "@jauto/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p src/main/tsconfig.json",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@jauto/ui": "workspace:*",
+    "@jauto/file-io": "workspace:*",
+    "vue": "^3",
+    "pinia": "^3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5",
+    "electron": "^35",
+    "electron-vite": "^3",
+    "vite": "^6",
+    "typescript": "^5.8",
+    "vue-tsc": "^2"
+  }
+}

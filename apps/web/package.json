@@ -1,0 +1,26 @@
+{
+  "name": "@jauto/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@jauto/ui": "workspace:*",
+    "@jauto/file-io": "workspace:*",
+    "vue": "^3",
+    "pinia": "^3",
+    "vue-router": "^4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5",
+    "vite": "^6",
+    "typescript": "^5.8",
+    "vue-tsc": "^2"
+  }
+}
