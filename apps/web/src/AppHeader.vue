@@ -107,7 +107,9 @@ function onRenameKey(e: KeyboardEvent) {
 
 <template>
   <header class="app-header" @mouseleave="closeMenu">
-    <button class="app-header__brand" @click="goHome" title="Back to Home">Jauto</button>
+    <button class="app-header__brand" @click="goHome" title="Back to Home">
+      <img src="/logo-small.png" alt="JAuto" class="app-header__brand-img" />
+    </button>
     <nav class="app-header__nav">
       <div class="app-header__menu-group">
         <button class="app-header__nav-btn" @click="toggleMenu('file')">File</button>
@@ -165,20 +167,23 @@ function onRenameKey(e: KeyboardEvent) {
 }
 
 .app-header__brand {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--color-primary);
-  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 2px 4px;
   border-radius: var(--radius-sm);
   transition: background 0.1s;
 }
 
 .app-header__brand:hover {
   background: rgba(66, 99, 235, 0.1);
+}
+
+.app-header__brand-img {
+  height: 24px;
+  width: auto;
 }
 
 .app-header__nav {

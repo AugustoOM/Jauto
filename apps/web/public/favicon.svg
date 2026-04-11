@@ -1,4 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="28" fill="#4263eb" />
-  <text x="32" y="40" text-anchor="middle" fill="white" font-family="system-ui" font-weight="700" font-size="28">J</text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff3b30"/>
+      <stop offset="100%" stop-color="#c0261c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <text
+    x="32" y="33"
+    text-anchor="middle"
+    dominant-baseline="central"
+    fill="white"
+    font-family="Arial Black, Impact, system-ui"
+    font-weight="900"
+    font-size="36"
+    font-style="italic"
+    letter-spacing="-2"
+  >JA</text>
 </svg>
