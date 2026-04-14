@@ -1,7 +1,7 @@
 {
   "extends": "../../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/renderer",
+    "outDir": "../../out/renderer",
     "jsx": "preserve",
     "declaration": false,
     "declarationMap": false

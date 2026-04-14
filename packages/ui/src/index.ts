@@ -12,3 +12,5 @@ export { useThemeStore } from './stores/theme';
 
 export type { SelectedElement, EditorTool, AppView } from './stores/document';
 export type { Theme } from './stores/theme';
+
+export { saveDocumentKey, type SaveDocumentFn } from './injectionKeys';

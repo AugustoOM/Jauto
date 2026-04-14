@@ -4,7 +4,7 @@ directories:
   buildResources: build
   output: release
 files:
-  - dist/**/*
+  - out/**/*
 win:
   target:
     - nsis
