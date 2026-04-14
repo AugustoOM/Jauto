@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { Check } from 'lucide-vue-next';
 import { useDocumentStore } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 import { UpdateStateCommand, UpdateTransitionCommand } from '@jauto/core';
@@ -20,52 +21,147 @@ const selectedTransition = computed<AnyTransition | undefined>(() => {
   return docStore.automaton.transitions.find((t) => t.id === sel.id);
 });
 
-function updateStateName(e: Event) {
+/** Local inspector copy; committed to the automaton with "Apply changes". */
+const stateDraft = ref<{
+  id: string;
+  name: string;
+  isInitial: boolean;
+  isFinal: boolean;
+} | null>(null);
+
+const transitionDraft = ref<Record<string, string> | null>(null);
+
+watch(
+  () => selectedState.value,
+  (s) => {
+    if (!s) {
+      stateDraft.value = null;
+      return;
+    }
+    stateDraft.value = {
+      id: s.id,
+      name: s.name,
+      isInitial: s.isInitial,
+      isFinal: s.isFinal,
+    };
+  },
+  { immediate: true },
+);
+
+watch(
+  () => selectedTransition.value,
+  (t) => {
+    if (!t) {
+      transitionDraft.value = null;
+      return;
+    }
+    const d: Record<string, string> = { read: t.read };
+    if ('pop' in t && 'push' in t) {
+      d.pop = t.pop;
+      d.push = t.push;
+    }
+    if ('write' in t && 'move' in t) {
+      d.write = t.write;
+      d.move = t.move;
+    }
+    transitionDraft.value = d;
+  },
+  { immediate: true },
+);
+
+const hasPendingStateEdits = computed(() => {
   const state = selectedState.value;
-  if (!state) return;
-  const name = (e.target as HTMLInputElement).value;
+  const draft = stateDraft.value;
+  if (!state || !draft || draft.id !== state.id) return false;
+  return (
+    draft.name !== state.name ||
+    draft.isInitial !== state.isInitial ||
+    draft.isFinal !== state.isFinal
+  );
+});
+
+const hasPendingTransitionEdits = computed(() => {
+  const t = selectedTransition.value;
+  const d = transitionDraft.value;
+  if (!t || !d) return false;
+  for (const [key, value] of Object.entries(d)) {
+    const cur = (t as unknown as Record<string, string>)[key];
+    if (cur !== value) return true;
+  }
+  return false;
+});
+
+const showApply = computed(
+  () =>
+    (selectedState.value && stateDraft.value) ||
+    (selectedTransition.value && transitionDraft.value),
+);
+
+const canApply = computed(() => hasPendingStateEdits.value || hasPendingTransitionEdits.value);
+
+function applyStateEdits() {
+  const state = selectedState.value;
+  const draft = stateDraft.value;
+  if (!state || !draft || draft.id !== state.id) return;
+
+  const oldProps: Record<string, unknown> = {};
+  const newProps: Record<string, unknown> = {};
+  if (draft.name !== state.name) {
+    oldProps.name = state.name;
+    newProps.name = draft.name;
+  }
+  if (draft.isInitial !== state.isInitial) {
+    oldProps.isInitial = state.isInitial;
+    newProps.isInitial = draft.isInitial;
+  }
+  if (draft.isFinal !== state.isFinal) {
+    oldProps.isFinal = state.isFinal;
+    newProps.isFinal = draft.isFinal;
+  }
+  if (Object.keys(newProps).length === 0) return;
   historyStore.dispatch(
-    new UpdateStateCommand(state.id, { name: state.name }, { name }),
+    new UpdateStateCommand(
+      state.id,
+      oldProps as Partial<Omit<AutomatonState, 'id'>>,
+      newProps as Partial<Omit<AutomatonState, 'id'>>,
+    ),
   );
 }
 
-function toggleInitial() {
-  const state = selectedState.value;
-  if (!state) return;
-  historyStore.dispatch(
-    new UpdateStateCommand(state.id, { isInitial: state.isInitial }, { isInitial: !state.isInitial }),
-  );
+function applyTransitionEdits() {
+  const t = selectedTransition.value;
+  const draft = transitionDraft.value;
+  if (!t || !draft) return;
+
+  const oldProps: Partial<Omit<AnyTransition, 'id'>> = {};
+  const newProps: Partial<Omit<AnyTransition, 'id'>> = {};
+  const tRec = t as unknown as Record<string, string>;
+  for (const [key, value] of Object.entries(draft)) {
+    if (tRec[key] !== value) {
+      (oldProps as Record<string, unknown>)[key] = tRec[key];
+      (newProps as Record<string, unknown>)[key] = value;
+    }
+  }
+  if (Object.keys(newProps).length === 0) return;
+  historyStore.dispatch(new UpdateTransitionCommand(t.id, oldProps, newProps));
 }
 
-function toggleFinal() {
-  const state = selectedState.value;
-  if (!state) return;
-  historyStore.dispatch(
-    new UpdateStateCommand(state.id, { isFinal: state.isFinal }, { isFinal: !state.isFinal }),
-  );
-}
-
-function updateTransitionField(field: string, value: string) {
-  const trans = selectedTransition.value;
-  if (!trans) return;
-  const oldProps = { [field]: (trans as unknown as Record<string, unknown>)[field] };
-  const newProps = { [field]: value };
-  historyStore.dispatch(new UpdateTransitionCommand(trans.id, oldProps, newProps));
+function applyChanges() {
+  if (hasPendingStateEdits.value) applyStateEdits();
+  else if (hasPendingTransitionEdits.value) applyTransitionEdits();
 }
 
 const transitionFields = computed(() => {
   const t = selectedTransition.value;
   if (!t) return [];
-  const fields: { key: string; label: string; value: string }[] = [
-    { key: 'read', label: 'Read', value: t.read },
-  ];
+  const fields: { key: string; label: string }[] = [{ key: 'read', label: 'Read' }];
   if ('pop' in t && 'push' in t) {
-    fields.push({ key: 'pop', label: 'Pop', value: t.pop });
-    fields.push({ key: 'push', label: 'Push', value: t.push });
+    fields.push({ key: 'pop', label: 'Pop' });
+    fields.push({ key: 'push', label: 'Push' });
   }
   if ('write' in t && 'move' in t) {
-    fields.push({ key: 'write', label: 'Write', value: t.write });
-    fields.push({ key: 'move', label: 'Move', value: t.move });
+    fields.push({ key: 'write', label: 'Write' });
+    fields.push({ key: 'move', label: 'Move' });
   }
   return fields;
 });
@@ -73,30 +169,18 @@ const transitionFields = computed(() => {
 
 <template>
   <aside class="inspector">
-    <div v-if="selectedState" class="inspector__section">
+    <div v-if="selectedState && stateDraft" class="inspector__section">
       <h3 class="inspector__title">State</h3>
       <label class="inspector__field">
         <span class="inspector__label">Name</span>
-        <input
-          class="inspector__input"
-          :value="selectedState.name"
-          @change="updateStateName"
-        />
+        <input v-model="stateDraft.name" class="inspector__input" />
       </label>
       <label class="inspector__field inspector__field--row">
-        <input
-          type="checkbox"
-          :checked="selectedState.isInitial"
-          @change="toggleInitial"
-        />
+        <input v-model="stateDraft.isInitial" type="checkbox" />
         <span>Initial</span>
       </label>
       <label class="inspector__field inspector__field--row">
-        <input
-          type="checkbox"
-          :checked="selectedState.isFinal"
-          @change="toggleFinal"
-        />
+        <input v-model="stateDraft.isFinal" type="checkbox" />
         <span>Final (Accepting)</span>
       </label>
       <div class="inspector__coords">
@@ -104,27 +188,34 @@ const transitionFields = computed(() => {
       </div>
     </div>
 
-    <div v-else-if="selectedTransition" class="inspector__section">
+    <div v-else-if="selectedTransition && transitionDraft" class="inspector__section">
       <h3 class="inspector__title">Transition</h3>
       <div class="inspector__meta">
         {{ selectedTransition.from }} → {{ selectedTransition.to }}
       </div>
-      <label
-        v-for="field in transitionFields"
-        :key="field.key"
-        class="inspector__field"
-      >
+      <label v-for="field in transitionFields" :key="field.key" class="inspector__field">
         <span class="inspector__label">{{ field.label }}</span>
-        <input
-          class="inspector__input"
-          :value="field.value"
-          @change="(e) => updateTransitionField(field.key, (e.target as HTMLInputElement).value)"
-        />
+        <input v-model="transitionDraft[field.key]" class="inspector__input" />
       </label>
     </div>
 
     <div v-else class="inspector__empty">
       <p>Select a state or transition to inspect its properties.</p>
+    </div>
+
+    <div v-if="showApply" class="inspector__actions">
+      <button
+        type="button"
+        class="inspector__apply"
+        :disabled="!canApply"
+        :title="
+          canApply ? 'Write inspector values to the automaton on the canvas' : 'No pending edits'
+        "
+        @click="applyChanges"
+      >
+        <Check :size="14" class="inspector__apply-icon" />
+        <span>Apply changes</span>
+      </button>
     </div>
   </aside>
 </template>
@@ -185,7 +276,7 @@ const transitionFields = computed(() => {
 .inspector__input:focus {
   outline: none;
   border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px var(--accent-glow-strong);
+  box-shadow: 0 0 0 2px var(--accent-glow-strong);
 }
 
 .inspector__meta {
@@ -205,5 +296,42 @@ const transitionFields = computed(() => {
   font-size: 13px;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.inspector__actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.inspector__apply {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.inspector__apply:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.inspector__apply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.inspector__apply-icon {
+  flex-shrink: 0;
 }
 </style>
