@@ -4,6 +4,12 @@ import type { SelectedElement } from '../stores/document';
 const STATE_RADIUS = 28;
 const ARROW_SIZE = 10;
 
+export function readCssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
 export interface RenderOptions {
   offsetX: number;
   offsetY: number;
@@ -22,11 +28,15 @@ export function useCanvasRenderer() {
   ) {
     const { offsetX, offsetY, scale, selected, highlightedStates } = options;
 
+    const canvasBg = readCssVar('--color-canvas-bg', '#111111');
+    const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
+    const fontSans = readCssVar('--font-family', 'DM Sans, system-ui, sans-serif');
+
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#f8f9fa';
+    ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, width, height);
 
-    drawGrid(ctx, width, height, offsetX, offsetY, scale);
+    drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
@@ -38,19 +48,19 @@ export function useCanvasRenderer() {
       if (!from || !to) continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
-      drawTransition(ctx, from, to, t, automaton, isSelected);
+      drawTransition(ctx, from, to, t, automaton, isSelected, fontSans);
     }
 
     for (const state of automaton.states) {
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
-      drawState(ctx, state, isSelected, isHighlighted);
+      drawState(ctx, state, isSelected, isHighlighted, fontSans);
     }
 
     if (automaton.states.length === 0) {
       ctx.restore();
-      ctx.fillStyle = '#adb5bd';
-      ctx.font = '14px system-ui, sans-serif';
+      ctx.fillStyle = readCssVar('--color-empty-hint', '#666');
+      ctx.font = `14px ${fontSans}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('Right-click the canvas to add a state', width / 2, height / 2);
@@ -67,11 +77,12 @@ export function useCanvasRenderer() {
     offsetX: number,
     offsetY: number,
     scale: number,
+    gridColor: string,
   ) {
     const gridSize = 40 * scale;
     if (gridSize < 8) return;
 
-    ctx.strokeStyle = '#e9ecef';
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 0.5;
     ctx.beginPath();
 
@@ -95,30 +106,39 @@ export function useCanvasRenderer() {
     state: AutomatonState,
     isSelected: boolean,
     isHighlighted: boolean,
+    fontSans: string,
   ) {
     const { x, y } = state;
+
+    const accent = readCssVar('--color-primary', '#ff3b30');
+    const glowStrong = readCssVar('--color-state-highlight-glow', 'rgba(255, 59, 48, 0.3)');
+    const hlFill = readCssVar('--color-state-highlight-fill', 'rgba(255, 59, 48, 0.14)');
+    const stateFill = readCssVar('--color-state-fill', 'rgba(255,255,255,0.08)');
+    const strokeMain = readCssVar('--color-state-stroke', '#f0f0f0');
+    const strokeMuted = readCssVar('--color-state-stroke-muted', '#aaa');
+    const labelColor = readCssVar('--color-label-text', '#fff');
 
     if (isHighlighted) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, STATE_RADIUS + 6, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(66, 99, 235, 0.12)';
+      ctx.fillStyle = glowStrong;
       ctx.fill();
       ctx.restore();
     }
 
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = isHighlighted ? '#dbe4ff' : '#ffffff';
+    ctx.fillStyle = isHighlighted ? hlFill : stateFill;
     ctx.fill();
-    ctx.strokeStyle = isHighlighted ? '#4263eb' : isSelected ? '#4263eb' : '#343a40';
+    ctx.strokeStyle = isHighlighted || isSelected ? accent : strokeMain;
     ctx.lineWidth = isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
     if (state.isFinal) {
       ctx.beginPath();
       ctx.arc(x, y, STATE_RADIUS - 4, 0, Math.PI * 2);
-      ctx.strokeStyle = isSelected ? '#4263eb' : '#343a40';
+      ctx.strokeStyle = isSelected ? accent : strokeMuted;
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -127,8 +147,8 @@ export function useCanvasRenderer() {
       drawInitialArrow(ctx, state);
     }
 
-    ctx.fillStyle = '#212529';
-    ctx.font = '13px system-ui, sans-serif';
+    ctx.fillStyle = labelColor;
+    ctx.font = `13px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(state.name, x, y);
@@ -142,7 +162,8 @@ export function useCanvasRenderer() {
     ctx.beginPath();
     ctx.moveTo(startX, y);
     ctx.lineTo(endX, y);
-    ctx.strokeStyle = '#343a40';
+    const arrowColor = readCssVar('--color-initial-arrow', '#aaa');
+    ctx.strokeStyle = arrowColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -151,7 +172,7 @@ export function useCanvasRenderer() {
     ctx.lineTo(endX - ARROW_SIZE, y - ARROW_SIZE / 2);
     ctx.lineTo(endX - ARROW_SIZE, y + ARROW_SIZE / 2);
     ctx.closePath();
-    ctx.fillStyle = '#343a40';
+    ctx.fillStyle = arrowColor;
     ctx.fill();
   }
 
@@ -162,13 +183,16 @@ export function useCanvasRenderer() {
     transition: AnyTransition,
     automaton: AnyAutomaton,
     isSelected: boolean,
+    fontSans: string,
   ) {
-    ctx.strokeStyle = isSelected ? '#4263eb' : '#495057';
+    const accent = readCssVar('--color-primary', '#ff3b30');
+    const strokeDefault = readCssVar('--color-transition-stroke', '#aaa');
+    ctx.strokeStyle = isSelected ? accent : strokeDefault;
     ctx.lineWidth = isSelected ? 2 : 1.5;
-    ctx.fillStyle = isSelected ? '#4263eb' : '#495057';
+    ctx.fillStyle = isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
-      drawSelfLoop(ctx, from, transition);
+      drawSelfLoop(ctx, from, transition, fontSans, isSelected);
       return;
     }
 
@@ -209,15 +233,16 @@ export function useCanvasRenderer() {
     const labelY = (from.y + to.y) / 2 + (needsCurve ? nx * 18 : nx * 14);
     const label = getTransitionLabel(transition);
 
-    ctx.fillStyle = isSelected ? '#4263eb' : '#212529';
-    ctx.font = '12px system-ui, sans-serif';
+    const labelText = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    ctx.fillStyle = labelText;
+    ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     const metrics = ctx.measureText(label);
     const padding = 3;
     ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = readCssVar('--color-label-chip-bg', 'rgba(255,255,255,0.06)');
     ctx.fillRect(
       labelX - metrics.width / 2 - padding,
       labelY - 7 - padding,
@@ -226,7 +251,7 @@ export function useCanvasRenderer() {
     );
     ctx.restore();
 
-    ctx.fillStyle = isSelected ? '#4263eb' : '#212529';
+    ctx.fillStyle = labelText;
     ctx.fillText(label, labelX, labelY);
   }
 
@@ -234,6 +259,8 @@ export function useCanvasRenderer() {
     ctx: CanvasRenderingContext2D,
     state: AutomatonState,
     transition: AnyTransition,
+    fontSans: string,
+    isSelected: boolean,
   ) {
     const cx = state.x;
     const cy = state.y - STATE_RADIUS - 20;
@@ -249,7 +276,9 @@ export function useCanvasRenderer() {
     drawArrowHead(ctx, ax, ay, Math.PI / 2 + 0.5);
 
     const label = getTransitionLabel(transition);
-    ctx.font = '12px system-ui, sans-serif';
+    const accent = readCssVar('--color-primary', '#ff3b30');
+    ctx.fillStyle = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(label, cx, cy - r - 4);

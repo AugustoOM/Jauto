@@ -185,7 +185,7 @@ const transitionFields = computed(() => {
 .inspector__input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(66, 99, 235, 0.15);
+    box-shadow: 0 0 0 2px var(--accent-glow-strong);
 }
 
 .inspector__meta {

@@ -160,7 +160,8 @@ function onRenameKey(e: KeyboardEvent) {
   gap: 16px;
   padding: 0 16px;
   height: 40px;
-  background: var(--color-bg-tertiary);
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   user-select: none;
@@ -178,7 +179,7 @@ function onRenameKey(e: KeyboardEvent) {
 }
 
 .app-header__brand:hover {
-  background: rgba(66, 99, 235, 0.1);
+  background: var(--accent-glow);
 }
 
 .app-header__brand-img {
@@ -301,7 +302,7 @@ function onRenameKey(e: KeyboardEvent) {
   font-size: 12px;
   font-family: inherit;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(66, 99, 235, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-glow-strong);
 }
 
 .app-header__rename-ext {

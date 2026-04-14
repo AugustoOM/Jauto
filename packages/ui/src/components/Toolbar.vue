@@ -122,13 +122,13 @@ function selectTool(tool: EditorTool) {
 }
 
 .toolbar__btn--modifier {
-  background: rgba(66, 99, 235, 0.15);
+  background: var(--accent-glow);
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
 
 .toolbar__btn--modifier:hover {
-  background: rgba(66, 99, 235, 0.25);
+  background: var(--accent-glow-strong);
   color: var(--color-primary);
 }
 

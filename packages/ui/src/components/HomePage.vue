@@ -174,11 +174,11 @@ const automatonTypes: { kind: AutomatonKind; title: string; description: string;
 .home__card:hover {
   border-color: var(--color-primary);
   background: var(--color-bg);
-  box-shadow: 0 2px 8px rgba(66, 99, 235, 0.1);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .home__card:active {
-  background: rgba(66, 99, 235, 0.05);
+  background: var(--accent-glow);
 }
 
 .home__card-icon {
@@ -195,7 +195,7 @@ const automatonTypes: { kind: AutomatonKind; title: string; description: string;
 }
 
 .home__card:hover .home__card-icon {
-  background: rgba(66, 99, 235, 0.08);
+  background: var(--accent-glow-strong);
   border-color: var(--color-primary);
 }
 
