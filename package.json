@@ -15,14 +15,23 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "turbo": "^2",
-    "typescript": "^5.8",
-    "prettier": "^3",
-    "eslint": "^9",
-    "vitest": "^3"
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.3",
+    "turbo": "^2.9.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron", "esbuild"]
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ],
+    "overrides": {
+      "electron@<38.8.6": ">=38.8.6",
+      "electron@<39.8.1": ">=39.8.1",
+      "electron@>=33.0.0-alpha.1 <39.8.5": ">=39.8.5",
+      "electron@<39.8.5": ">=39.8.5"
+    }
   },
   "packageManager": "pnpm@10.18.2",
   "engines": {
