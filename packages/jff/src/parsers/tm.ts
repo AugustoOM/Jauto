@@ -1,7 +1,19 @@
 import type { TMTransition } from '@jauto/core';
 import { TAG } from '../constants';
 
-let tmTransCounter = 0;
+class TMTransitionIdGenerator {
+  private counter = 0;
+
+  nextId(): string {
+    return `jff_tm_t${this.counter++}`;
+  }
+
+  reset(): void {
+    this.counter = 0;
+  }
+}
+
+const globalGenerator = new TMTransitionIdGenerator();
 
 function parseMove(value: unknown): 'L' | 'R' | 'S' {
   const s = String(value ?? 'R').toUpperCase();
@@ -21,10 +33,14 @@ export function parseTMTransitions(automatonNode: Record<string, unknown>): TMTr
     const write = node[TAG.WRITE] != null ? String(node[TAG.WRITE]) : '';
     const move = parseMove(node[TAG.MOVE]);
 
-    return { id: `jff_tm_t${tmTransCounter++}`, from, to, read, write, move };
+    return { id: globalGenerator.nextId(), from, to, read, write, move };
   });
 }
 
 export function resetTMCounter(): void {
-  tmTransCounter = 0;
+  globalGenerator.reset();
+}
+
+export function createIdGenerator() {
+  return new TMTransitionIdGenerator();
 }

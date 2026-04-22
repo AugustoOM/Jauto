@@ -1,4 +1,4 @@
-import { Menu, BrowserWindow } from 'electron';
+import { Menu, BrowserWindow, dialog } from 'electron';
 import type { MenuItemConstructorOptions } from 'electron';
 
 export function buildMenu(): void {
@@ -30,8 +30,8 @@ export function buildMenu(): void {
       label: 'File',
       submenu: [
         { label: 'New DFA/NFA', accelerator: 'CmdOrCtrl+N', click: () => sendToRenderer('menu:new-fa') },
-        { label: 'New PDA', click: () => sendToRenderer('menu:new-pda') },
-        { label: 'New Turing Machine', click: () => sendToRenderer('menu:new-tm') },
+        { label: 'New PDA', accelerator: 'CmdOrCtrl+Shift+N', click: () => sendToRenderer('menu:new-pda') },
+        { label: 'New Turing Machine', accelerator: 'CmdOrCtrl+Alt+N', click: () => sendToRenderer('menu:new-tm') },
         { type: 'separator' },
         { label: 'Open...', accelerator: 'CmdOrCtrl+O', click: () => sendToRenderer('menu:open') },
         { label: 'Save As...', accelerator: 'CmdOrCtrl+S', click: () => sendToRenderer('menu:save') },
@@ -73,7 +73,6 @@ export function buildMenu(): void {
         {
           label: 'About Jauto',
           click: () => {
-            const { dialog } = require('electron');
             dialog.showMessageBox({
               type: 'info',
               title: 'About Jauto',

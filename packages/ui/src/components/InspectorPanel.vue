@@ -21,6 +21,17 @@ const selectedTransition = computed<AnyTransition | undefined>(() => {
   return docStore.automaton.transitions.find((t) => t.id === sel.id);
 });
 
+const transitionStateNames = computed(() => {
+  const t = selectedTransition.value;
+  if (!t) return null;
+  const fromState = docStore.automaton.states.find((s) => s.id === t.from);
+  const toState = docStore.automaton.states.find((s) => s.id === t.to);
+  return {
+    from: fromState?.name ?? t.from,
+    to: toState?.name ?? t.to,
+  };
+});
+
 /** Local inspector copy; committed to the automaton with "Apply changes". */
 const stateDraft = ref<{
   id: string;
@@ -191,7 +202,7 @@ const transitionFields = computed(() => {
     <div v-else-if="selectedTransition && transitionDraft" class="inspector__section">
       <h3 class="inspector__title">Transition</h3>
       <div class="inspector__meta">
-        {{ selectedTransition.from }} → {{ selectedTransition.to }}
+        {{ transitionStateNames?.from }} → {{ transitionStateNames?.to }}
       </div>
       <label v-for="field in transitionFields" :key="field.key" class="inspector__field">
         <span class="inspector__label">{{ field.label }}</span>

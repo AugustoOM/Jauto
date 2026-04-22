@@ -68,7 +68,7 @@ export function parseJFF(xml: string): ParseResult {
       const tapesRaw = structure[TAG.TAPES] ?? automatonNode[TAG.TAPES];
       const tapes = tapesRaw ? parseInt(String(tapesRaw), 10) : 1;
       if (tapes > 1) {
-        warnings.push(new JFFValidationWarning(`Multi-tape TM detected (${tapes} tapes). Only tape 1 is supported in MVP.`));
+        warnings.push(new JFFValidationWarning(`Multi-tape TM not supported. Only the first tape's transitions will be used.`));
       }
       const automaton: TuringMachine = { kind: 'turing', states, transitions, tapes };
       return { automaton, warnings };

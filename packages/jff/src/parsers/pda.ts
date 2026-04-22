@@ -1,7 +1,19 @@
 import type { PDATransition } from '@jauto/core';
 import { TAG } from '../constants';
 
-let pdaTransCounter = 0;
+class PDATransitionIdGenerator {
+  private counter = 0;
+
+  nextId(): string {
+    return `jff_pda_t${this.counter++}`;
+  }
+
+  reset(): void {
+    this.counter = 0;
+  }
+}
+
+const globalGenerator = new PDATransitionIdGenerator();
 
 export function parsePDATransitions(automatonNode: Record<string, unknown>): PDATransition[] {
   const raw = automatonNode[TAG.TRANSITION];
@@ -15,10 +27,14 @@ export function parsePDATransitions(automatonNode: Record<string, unknown>): PDA
     const pop = node[TAG.POP] != null ? String(node[TAG.POP]) : '';
     const push = node[TAG.PUSH] != null ? String(node[TAG.PUSH]) : '';
 
-    return { id: `jff_pda_t${pdaTransCounter++}`, from, to, read, pop, push };
+    return { id: globalGenerator.nextId(), from, to, read, pop, push };
   });
 }
 
 export function resetPDACounter(): void {
-  pdaTransCounter = 0;
+  globalGenerator.reset();
+}
+
+export function createIdGenerator() {
+  return new PDATransitionIdGenerator();
 }

@@ -1,7 +1,8 @@
 import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
+import { STATE_RADIUS } from '../constants';
+import { SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
 
-const STATE_RADIUS = 28;
 const ARROW_SIZE = 10;
 
 export function readCssVar(name: string, fallback: string): string {
@@ -263,8 +264,8 @@ export function useCanvasRenderer() {
     isSelected: boolean,
   ) {
     const cx = state.x;
-    const cy = state.y - STATE_RADIUS - 20;
-    const r = 18;
+    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
+    const r = SELF_LOOP_RADIUS;
 
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0.3, Math.PI * 2 - 0.3);

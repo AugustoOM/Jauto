@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 import { useCanvasRenderer, readCssVar } from '../composables/useCanvasRenderer';
@@ -125,13 +125,6 @@ onUnmounted(() => {
   window.removeEventListener('blur', handleWindowBlur);
   docStore.heldModifier = null;
 });
-
-watch(
-  () => docStore.automaton.states,
-  () => {
-    /* triggers redraw on next frame */
-  },
-);
 
 defineExpose({ panZoom });
 </script>
