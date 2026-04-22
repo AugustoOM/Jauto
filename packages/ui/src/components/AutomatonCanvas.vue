@@ -70,7 +70,8 @@ function getCanvasRect(): DOMRect {
 }
 
 function handleMouseDown(e: MouseEvent) {
-  if (e.button === 1) {
+  const pointerType = (e as PointerEvent).pointerType;
+  if (e.button === 1 || pointerType === 'touch' || pointerType === 'pen') {
     panZoom.onPanStart(e);
     return;
   }
@@ -84,9 +85,7 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp(e: MouseEvent) {
   panZoom.onPanEnd();
-  if (e.button === 0) {
-    interaction.onMouseUp(e, getCanvasRect());
-  }
+  interaction.onMouseUp(e, getCanvasRect());
 }
 
 function handleKeyDown(e: KeyboardEvent) {

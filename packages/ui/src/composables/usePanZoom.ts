@@ -38,7 +38,8 @@ export function usePanZoom() {
   }
 
   function onPanStart(e: MouseEvent) {
-    if (e.button === 1) {
+    const pointerType = (e as PointerEvent).pointerType;
+    if (e.button === 1 || e.buttons > 1 || pointerType === 'touch' || pointerType === 'pen') {
       isPanning = true;
       lastX = e.clientX;
       lastY = e.clientY;
