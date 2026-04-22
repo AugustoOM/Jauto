@@ -31,12 +31,14 @@ export {
 export {
   isDeterministic,
   hasInitialState,
+  getInitialState,
   isComplete,
   hasUnreachableStates,
   validate,
 } from './validation';
 
-export { generateStateId, generateTransitionId } from './ids';
+export { generateStateId, generateTransitionId, createIdGenerator, resetIdCounters } from './ids';
+export type { IdGenerator } from './ids';
 
 export type { Command } from './commands/types';
 export { CommandHistory } from './commands/history';

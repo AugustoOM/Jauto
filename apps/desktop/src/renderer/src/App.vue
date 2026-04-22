@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
+import { onMounted, provide } from 'vue';
+import {
+  HomePage,
+  EditorView,
+  saveDocumentKey,
+  useDocumentStore,
+  useHistoryStore,
+  useSimulationStore,
+} from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import { DesktopFileService } from './DesktopFileService';
@@ -9,6 +16,19 @@ const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
 const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+
+async function saveCurrentDocument() {
+  try {
+    const name = docStore.fileName ?? 'untitled.jff';
+    await saveAutomaton(fileService, docStore.automaton, name);
+    docStore.markSaved(name);
+    updateTitle();
+  } catch (err) {
+    console.error('Failed to save:', err);
+  }
+}
+
+provide(saveDocumentKey, saveCurrentDocument);
 
 function handleNew(kind: AutomatonKind) {
   docStore.newDocument(kind);
@@ -58,14 +78,7 @@ onMounted(() => {
         await handleOpen();
         break;
       case 'menu:save':
-        try {
-          const name = docStore.fileName ?? 'untitled.jff';
-          await saveAutomaton(fileService, docStore.automaton, name);
-          docStore.markSaved(name);
-          updateTitle();
-        } catch (err) {
-          console.error('Failed to save:', err);
-        }
+        await saveCurrentDocument();
         break;
       case 'menu:export-png': {
         const canvas = document.querySelector('canvas');

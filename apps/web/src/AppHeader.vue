@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import { Pencil } from 'lucide-vue-next';
+import { Pencil, Save } from 'lucide-vue-next';
 import { useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
@@ -14,6 +14,7 @@ const isRenaming = ref(false);
 const renameCancelled = ref(false);
 const renameInput = ref<HTMLInputElement | null>(null);
 const renameValue = ref('');
+const savingFile = ref(false);
 
 function toggleMenu(menu: string) {
   openMenu.value = openMenu.value === menu ? null : menu;
@@ -50,14 +51,30 @@ async function openFile() {
   }
 }
 
+async function persistToDisk() {
+  const name = docStore.fileName ?? 'untitled.jff';
+  await saveAutomaton(fileService, docStore.automaton, name);
+  docStore.markSaved(name);
+}
+
 async function saveFile() {
   closeMenu();
-  const name = docStore.fileName ?? 'untitled.jff';
   try {
-    await saveAutomaton(fileService, docStore.automaton, name);
-    docStore.markSaved(name);
+    await persistToDisk();
   } catch (err) {
     alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+async function onSaveClick() {
+  if (savingFile.value) return;
+  savingFile.value = true;
+  try {
+    await persistToDisk();
+  } catch (err) {
+    alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    savingFile.value = false;
   }
 }
 
@@ -127,6 +144,16 @@ function onRenameKey(e: KeyboardEvent) {
       </div>
     </nav>
     <div class="app-header__right">
+      <button
+        type="button"
+        class="app-header__save"
+        :disabled="savingFile || !docStore.isDirty"
+        :title="docStore.isDirty ? 'Save .jff' : 'No unsaved changes'"
+        @click="onSaveClick"
+      >
+        <Save :size="15" class="app-header__save-icon" />
+        <span>{{ savingFile ? 'Saving…' : 'Save' }}</span>
+      </button>
       <div class="app-header__file-label">
         <template v-if="isRenaming">
           <input
@@ -160,7 +187,8 @@ function onRenameKey(e: KeyboardEvent) {
   gap: 16px;
   padding: 0 16px;
   height: 40px;
-  background: var(--color-bg-tertiary);
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   user-select: none;
@@ -178,7 +206,7 @@ function onRenameKey(e: KeyboardEvent) {
 }
 
 .app-header__brand:hover {
-  background: rgba(66, 99, 235, 0.1);
+  background: var(--accent-glow);
 }
 
 .app-header__brand-img {
@@ -254,6 +282,40 @@ function onRenameKey(e: KeyboardEvent) {
   font-size: 12px;
 }
 
+.app-header__save {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s,
+    opacity 0.1s;
+}
+
+.app-header__save:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--accent-glow);
+}
+
+.app-header__save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-header__save-icon {
+  flex-shrink: 0;
+}
+
 .app-header__file-label {
   display: flex;
   align-items: center;
@@ -301,7 +363,7 @@ function onRenameKey(e: KeyboardEvent) {
   font-size: 12px;
   font-family: inherit;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(66, 99, 235, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-glow-strong);
 }
 
 .app-header__rename-ext {

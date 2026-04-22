@@ -20,4 +20,7 @@ body {
   background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition:
+    color var(--transition),
+    background-color var(--transition);
 }

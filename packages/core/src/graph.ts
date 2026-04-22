@@ -1,4 +1,4 @@
-import type { Automaton, AutomatonState, AnyTransition } from './types';
+import type { Automaton, AutomatonState, AnyTransition, AnyAutomaton, AutomatonKind, FATransition, PDATransition, TMTransition } from './types';
 
 export function addState<T extends AnyTransition>(
   automaton: Automaton<T>,
@@ -87,11 +87,34 @@ export function getTransitionsTo<T extends AnyTransition>(
   return automaton.transitions.filter((t) => t.to === stateId);
 }
 
-export function getAlphabet<T extends AnyTransition>(automaton: Automaton<T>): Set<string> {
+export function getAlphabet(automaton: AnyAutomaton): Set<string> {
   const symbols = new Set<string>();
-  for (const t of automaton.transitions) {
-    if (t.read !== '') {
-      symbols.add(t.read);
+  switch (automaton.kind) {
+    case 'fa': {
+      for (const t of automaton.transitions) {
+        const ft = t as FATransition;
+        if (ft.read !== '') {
+          symbols.add(ft.read);
+        }
+      }
+      break;
+    }
+    case 'pda': {
+      for (const t of automaton.transitions) {
+        const pt = t as PDATransition;
+        if (pt.read !== '') symbols.add(pt.read);
+        if (pt.pop !== '') symbols.add(pt.pop);
+        if (pt.push !== '') symbols.add(pt.push);
+      }
+      break;
+    }
+    case 'turing': {
+      for (const t of automaton.transitions) {
+        const tt = t as TMTransition;
+        if (tt.read !== '') symbols.add(tt.read);
+        if (tt.write !== '') symbols.add(tt.write);
+      }
+      break;
     }
   }
   return symbols;

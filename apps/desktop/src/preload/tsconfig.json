@@ -1,7 +1,7 @@
 {
   "extends": "../../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/preload",
+    "outDir": "../../out/preload",
     "declaration": false,
     "declarationMap": false
   },

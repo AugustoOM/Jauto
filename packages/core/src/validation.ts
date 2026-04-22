@@ -1,4 +1,4 @@
-import type { AnyAutomaton, AutomatonState, FiniteAutomaton } from './types';
+import type { AnyAutomaton, AutomatonKind, AutomatonState, FiniteAutomaton, PushdownAutomaton, TuringMachine } from './types';
 import { getTransitionsFrom } from './graph';
 
 export interface ValidationDiagnostic {
@@ -15,7 +15,18 @@ export function getInitialState(automaton: AnyAutomaton): AutomatonState | undef
   return automaton.states.find((s) => s.isInitial);
 }
 
-export function isDeterministic(automaton: FiniteAutomaton): boolean {
+export function isDeterministic(automaton: AnyAutomaton): boolean {
+  switch (automaton.kind) {
+    case 'fa':
+      return checkFADeterminism(automaton as FiniteAutomaton);
+    case 'pda':
+      return checkPDADeterminism(automaton as PushdownAutomaton);
+    case 'turing':
+      return checkTMDeterminism(automaton as TuringMachine);
+  }
+}
+
+function checkFADeterminism(automaton: FiniteAutomaton): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
     const readSymbols = transitions.map((t) => t.read);
@@ -27,7 +38,42 @@ export function isDeterministic(automaton: FiniteAutomaton): boolean {
   return true;
 }
 
-export function isComplete(automaton: FiniteAutomaton): boolean {
+function checkPDADeterminism(automaton: PushdownAutomaton): boolean {
+  for (const state of automaton.states) {
+    const transitions = getTransitionsFrom(automaton, state.id);
+    for (const t of transitions) {
+      const matches = transitions.filter(
+        (other) => other.id !== t.id && other.read === t.read && other.pop === t.pop,
+      );
+      if (matches.length > 0) return false;
+    }
+  }
+  return true;
+}
+
+function checkTMDeterminism(automaton: TuringMachine): boolean {
+  for (const state of automaton.states) {
+    const transitions = getTransitionsFrom(automaton, state.id);
+    for (const t of transitions) {
+      const matches = transitions.filter((other) => other.id !== t.id && other.read === t.read);
+      if (matches.length > 0) return false;
+    }
+  }
+  return true;
+}
+
+export function isComplete(automaton: AnyAutomaton): boolean {
+  switch (automaton.kind) {
+    case 'fa':
+      return checkFACompleteness(automaton as FiniteAutomaton);
+    case 'pda':
+      return checkPDACompleteness(automaton as PushdownAutomaton);
+    case 'turing':
+      return checkTMCompleteness(automaton as TuringMachine);
+  }
+}
+
+function checkFACompleteness(automaton: FiniteAutomaton): boolean {
   const alphabet = new Set<string>();
   for (const t of automaton.transitions) {
     if (t.read !== '') alphabet.add(t.read);
@@ -40,6 +86,14 @@ export function isComplete(automaton: FiniteAutomaton): boolean {
       if (!covered.has(symbol)) return false;
     }
   }
+  return true;
+}
+
+function checkPDACompleteness(_automaton: PushdownAutomaton): boolean {
+  return true;
+}
+
+function checkTMCompleteness(_automaton: TuringMachine): boolean {
   return true;
 }
 

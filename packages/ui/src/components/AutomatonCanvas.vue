@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
-import { useCanvasRenderer } from '../composables/useCanvasRenderer';
+import { useCanvasRenderer, readCssVar } from '../composables/useCanvasRenderer';
 import { usePanZoom } from '../composables/usePanZoom';
 import { useInteractionManager } from '../composables/useInteractionManager';
 
@@ -39,7 +39,7 @@ function draw() {
       ctx.translate(panZoom.offsetX.value, panZoom.offsetY.value);
       ctx.scale(panZoom.scale.value, panZoom.scale.value);
       ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = '#4263eb';
+      ctx.strokeStyle = readCssVar('--color-primary', '#ff3b30');
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(source.x, source.y);
@@ -125,13 +125,6 @@ onUnmounted(() => {
   window.removeEventListener('blur', handleWindowBlur);
   docStore.heldModifier = null;
 });
-
-watch(
-  () => docStore.automaton.states,
-  () => {
-    /* triggers redraw on next frame */
-  },
-);
 
 defineExpose({ panZoom });
 </script>
