@@ -33,7 +33,7 @@
       "electron@<39.8.5": ">=39.8.5"
     }
   },
-  "packageManager": "pnpm@10.18.2",
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"
   }

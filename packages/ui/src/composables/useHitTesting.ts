@@ -1,7 +1,5 @@
 import type { AutomatonState, AnyTransition, AnyAutomaton } from '@jauto/core';
-
-const STATE_RADIUS = 28;
-const TRANSITION_HIT_TOLERANCE = 8;
+import { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
 
 export function useHitTesting() {
   function hitTestState(
@@ -68,8 +66,8 @@ export function useHitTesting() {
     state: AutomatonState,
   ): boolean {
     const cx = state.x;
-    const cy = state.y - STATE_RADIUS - 20;
-    const r = 18;
+    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
+    const r = SELF_LOOP_RADIUS;
     const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
     return Math.abs(dist - r) <= TRANSITION_HIT_TOLERANCE;
   }

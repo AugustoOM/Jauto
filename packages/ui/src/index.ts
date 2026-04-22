@@ -12,3 +12,7 @@ export { useThemeStore } from './stores/theme';
 
 export type { SelectedElement, EditorTool, AppView } from './stores/document';
 export type { Theme } from './stores/theme';
+
+export { saveDocumentKey, type SaveDocumentFn } from './injectionKeys';
+
+export { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from './constants';

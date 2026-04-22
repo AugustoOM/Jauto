@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue';
-import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2 } from 'lucide-vue-next';
+import { computed, inject, ref, type Component } from 'vue';
+import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from 'lucide-vue-next';
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
+import { saveDocumentKey } from '../injectionKeys';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
+const saveDocument = inject(saveDocumentKey, null);
+const saving = ref(false);
+
+async function onSaveFile() {
+  if (!saveDocument) return;
+  saving.value = true;
+  try {
+    await saveDocument();
+  } finally {
+    saving.value = false;
+  }
+}
 
 const tools: { id: EditorTool; label: string; shortcut: string; icon: Component }[] = [
   { id: 'select', label: 'Select', shortcut: 'Click', icon: MousePointer2 },
@@ -63,6 +76,19 @@ function selectTool(tool: EditorTool) {
         <Redo2 :size="14" class="toolbar__icon" />
         <span class="toolbar__label">Redo</span>
       </button>
+      <template v-if="saveDocument">
+        <div class="toolbar__separator" />
+        <button
+          type="button"
+          class="toolbar__btn toolbar__btn--save"
+          :disabled="saving || !docStore.isDirty"
+          :title="docStore.isDirty ? 'Save .jff (Ctrl+S)' : 'No unsaved changes'"
+          @click="onSaveFile"
+        >
+          <Save :size="14" class="toolbar__icon" />
+          <span class="toolbar__label">{{ saving ? 'Saving…' : 'Save' }}</span>
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -122,19 +148,31 @@ function selectTool(tool: EditorTool) {
 }
 
 .toolbar__btn--modifier {
-  background: rgba(66, 99, 235, 0.15);
+  background: var(--accent-glow);
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
 
 .toolbar__btn--modifier:hover {
-  background: rgba(66, 99, 235, 0.25);
+  background: var(--accent-glow-strong);
   color: var(--color-primary);
 }
 
 .toolbar__btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.toolbar__btn--save:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.toolbar__btn--save:not(:disabled):hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--accent-glow);
 }
 
 .toolbar__icon {
