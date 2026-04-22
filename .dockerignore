@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.turbo/
+apps/desktop/node_modules/
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.production
+
+# Electron
+out/
+release/
