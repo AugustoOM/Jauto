@@ -7,6 +7,7 @@ import { usePanZoom } from '../composables/usePanZoom';
 import { useInteractionManager } from '../composables/useInteractionManager';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const spaceHeldForPan = ref(false);
 const docStore = useDocumentStore();
 const simStore = useSimulationStore();
 const { render } = useCanvasRenderer();
@@ -69,8 +70,19 @@ function getCanvasRect(): DOMRect {
   return canvasRef.value!.getBoundingClientRect();
 }
 
+function isEditableKeyTarget(elt: EventTarget | null) {
+  if (!elt || !(elt instanceof Element)) return false;
+  if (elt.closest('input, textarea, [contenteditable="true"]')) return true;
+  return false;
+}
+
 function handleMouseDown(e: MouseEvent) {
-  if (e.button === 1) {
+  const pointerType = (e as PointerEvent).pointerType;
+  if (spaceHeldForPan.value && e.button === 0) {
+    panZoom.onPanStart(e, { fromPrimaryWithSpace: true });
+    return;
+  }
+  if (e.button === 1 || pointerType === 'touch' || pointerType === 'pen') {
     panZoom.onPanStart(e);
     return;
   }
@@ -84,17 +96,23 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp(e: MouseEvent) {
   panZoom.onPanEnd();
-  if (e.button === 0) {
-    interaction.onMouseUp(e, getCanvasRect());
-  }
+  interaction.onMouseUp(e, getCanvasRect());
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  if (e.code === 'Space' && !isEditableKeyTarget(e.target)) {
+    e.preventDefault();
+    spaceHeldForPan.value = true;
+  }
   interaction.onKeyDown(e);
   updateModifier(e);
 }
 
 function handleKeyUp(e: KeyboardEvent) {
+  if (e.code === 'Space') {
+    spaceHeldForPan.value = false;
+    panZoom.onPanEnd();
+  }
   updateModifier(e);
 }
 
@@ -106,6 +124,8 @@ function updateModifier(e: KeyboardEvent) {
 
 function handleWindowBlur() {
   docStore.heldModifier = null;
+  spaceHeldForPan.value = false;
+  panZoom.onPanEnd();
 }
 
 onMounted(() => {
@@ -124,6 +144,7 @@ onUnmounted(() => {
   window.removeEventListener('keyup', handleKeyUp);
   window.removeEventListener('blur', handleWindowBlur);
   docStore.heldModifier = null;
+  spaceHeldForPan.value = false;
 });
 
 defineExpose({ panZoom });
@@ -133,6 +154,7 @@ defineExpose({ panZoom });
   <canvas
     ref="canvasRef"
     class="automaton-canvas"
+    :class="{ 'automaton-canvas--space-pan': spaceHeldForPan }"
     @mousedown="handleMouseDown"
     @mousemove="handleMouseMove"
     @mouseup="handleMouseUp"
@@ -147,5 +169,9 @@ defineExpose({ panZoom });
   width: 100%;
   height: 100%;
   cursor: default;
+}
+
+.automaton-canvas--space-pan {
+  cursor: grab;
 }
 </style>
