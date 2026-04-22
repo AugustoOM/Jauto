@@ -25,19 +25,38 @@ export function usePanZoom() {
 
   function onWheel(e: WheelEvent) {
     e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.1, Math.min(5, scale.value * zoomFactor));
+    if (e.ctrlKey) {
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.1, Math.min(5, scale.value * zoomFactor));
 
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
 
-    offsetX.value = mx - ((mx - offsetX.value) / scale.value) * newScale;
-    offsetY.value = my - ((my - offsetY.value) / scale.value) * newScale;
-    scale.value = newScale;
+      offsetX.value = mx - ((mx - offsetX.value) / scale.value) * newScale;
+      offsetY.value = my - ((my - offsetY.value) / scale.value) * newScale;
+      scale.value = newScale;
+      return;
+    }
+    // Two-finger scroll on trackpad (and non–Ctrl+wheel) pans; pinch-to-zoom on macOS uses ctrlKey.
+    let dy = e.deltaY;
+    let dx = e.deltaX;
+    if (e.deltaMode === 1) {
+      dx *= 16;
+      dy *= 16;
+    }
+    offsetX.value -= dx;
+    offsetY.value -= dy;
   }
 
-  function onPanStart(e: MouseEvent) {
+  function onPanStart(e: MouseEvent, opts?: { fromPrimaryWithSpace?: boolean }) {
+    if (opts?.fromPrimaryWithSpace) {
+      isPanning = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      e.preventDefault();
+      return;
+    }
     const pointerType = (e as PointerEvent).pointerType;
     if (e.button === 1 || e.buttons > 1 || pointerType === 'touch' || pointerType === 'pen') {
       isPanning = true;
