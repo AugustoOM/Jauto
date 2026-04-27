@@ -8,10 +8,10 @@
   --text: #f0f0f0;
   --text-secondary: #999;
   --text-muted: #666;
-  --accent: #ff3b30;
-  --accent-hover: #ff5147;
-  --accent-glow: rgba(255, 59, 48, 0.15);
-  --accent-glow-strong: rgba(255, 59, 48, 0.3);
+  --accent: #4263eb;
+  --accent-hover: #3b5bdb;
+  --accent-glow: rgba(66, 99, 235, 0.15);
+  --accent-glow-strong: rgba(66, 99, 235, 0.3);
   --nav-bg: rgba(27, 27, 27, 0.88);
   --automaton-state-fill: rgba(255, 255, 255, 0.03);
   --automaton-text: #fff;
@@ -33,10 +33,10 @@
   --text: #141414;
   --text-secondary: #525252;
   --text-muted: #737373;
-  --accent: #ff3b30;
-  --accent-hover: #ff5147;
-  --accent-glow: rgba(255, 59, 48, 0.12);
-  --accent-glow-strong: rgba(255, 59, 48, 0.22);
+  --accent: #4263eb;
+  --accent-hover: #3b5bdb;
+  --accent-glow: rgba(66, 99, 235, 0.12);
+  --accent-glow-strong: rgba(66, 99, 235, 0.22);
   --nav-bg: rgba(255, 255, 255, 0.85);
   --automaton-state-fill: rgba(0, 0, 0, 0.06);
   --automaton-text: #0a0a0a;
@@ -63,7 +63,7 @@
   --color-canvas-bg: var(--bg-elevated);
   --color-canvas-grid: var(--grid-line);
   --color-state-highlight-glow: var(--accent-glow-strong);
-  --color-state-highlight-fill: rgba(255, 59, 48, 0.14);
+  --color-state-highlight-fill: rgba(66, 99, 235, 0.14);
   --color-state-fill: var(--automaton-state-fill);
   --color-state-stroke: var(--text);
   --color-state-stroke-muted: var(--automaton-label);
