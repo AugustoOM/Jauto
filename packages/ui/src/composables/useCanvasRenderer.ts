@@ -111,9 +111,9 @@ export function useCanvasRenderer() {
   ) {
     const { x, y } = state;
 
-    const accent = readCssVar('--color-primary', '#ff3b30');
-    const glowStrong = readCssVar('--color-state-highlight-glow', 'rgba(255, 59, 48, 0.3)');
-    const hlFill = readCssVar('--color-state-highlight-fill', 'rgba(255, 59, 48, 0.14)');
+    const accent = readCssVar('--color-primary', '#4263eb');
+    const glowStrong = readCssVar('--color-state-highlight-glow', 'rgba(66, 99, 235, 0.3)');
+    const hlFill = readCssVar('--color-state-highlight-fill', 'rgba(66, 99, 235, 0.14)');
     const stateFill = readCssVar('--color-state-fill', 'rgba(255,255,255,0.08)');
     const strokeMain = readCssVar('--color-state-stroke', '#f0f0f0');
     const strokeMuted = readCssVar('--color-state-stroke-muted', '#aaa');
@@ -186,7 +186,7 @@ export function useCanvasRenderer() {
     isSelected: boolean,
     fontSans: string,
   ) {
-    const accent = readCssVar('--color-primary', '#ff3b30');
+    const accent = readCssVar('--color-primary', '#4263eb');
     const strokeDefault = readCssVar('--color-transition-stroke', '#aaa');
     ctx.strokeStyle = isSelected ? accent : strokeDefault;
     ctx.lineWidth = isSelected ? 2 : 1.5;
@@ -277,7 +277,7 @@ export function useCanvasRenderer() {
     drawArrowHead(ctx, ax, ay, Math.PI / 2 + 0.5);
 
     const label = getTransitionLabel(transition);
-    const accent = readCssVar('--color-primary', '#ff3b30');
+    const accent = readCssVar('--color-primary', '#4263eb');
     ctx.fillStyle = isSelected ? accent : readCssVar('--color-label-text', '#fff');
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';

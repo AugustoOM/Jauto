@@ -40,7 +40,7 @@ function draw() {
       ctx.translate(panZoom.offsetX.value, panZoom.offsetY.value);
       ctx.scale(panZoom.scale.value, panZoom.scale.value);
       ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = readCssVar('--color-primary', '#ff3b30');
+      ctx.strokeStyle = readCssVar('--color-primary', '#4263eb');
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(source.x, source.y);
