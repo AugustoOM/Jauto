@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, provide } from 'vue';
+import { listen } from '@tauri-apps/api/event';
 import {
   HomePage,
   EditorView,
@@ -52,9 +53,9 @@ async function handleOpen() {
 }
 
 onMounted(() => {
-  if (!window.electronAPI) return;
+  void listen<string>('menu-command', async (event) => {
+    const command = event.payload;
 
-  window.electronAPI.onMenuCommand(async (command: string) => {
     switch (command) {
       case 'menu:new-fa':
         docStore.newDocument('fa');

@@ -17,7 +17,7 @@
 ## Tech Stack
 
 - TypeScript, Vue 3, Vite
-- Electron (desktop)
+- Tauri (native desktop for Windows and macOS)
 - pnpm workspaces + Turborepo (monorepo)
 
 ## Getting Started
@@ -26,6 +26,7 @@
 
 - [Node.js](https://nodejs.org/) >= 22
 - [pnpm](https://pnpm.io/) >= 10
+- [Rust](https://www.rust-lang.org/tools/install) with Cargo for native desktop builds
 
 ### Setup
 
@@ -70,7 +71,7 @@ jauto/
     ui/          — Shared Vue 3 components, composables, and stores
   apps/
     web/         — Browser application (Vue 3 SPA)
-    desktop/     — Desktop application (Electron)
+    desktop/     — Native desktop application (Tauri)
 ```
 
 ## License
