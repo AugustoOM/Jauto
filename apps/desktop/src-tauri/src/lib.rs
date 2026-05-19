@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::{fs, path::Path};
 use tauri::{
     menu::{MenuBuilder, MenuItem, SubmenuBuilder},
-    Emitter,
+    Emitter, Manager,
 };
 
 #[derive(Serialize)]
@@ -86,6 +86,7 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
     let export_png = MenuItem::with_id(app, "menu:export-png", "Export PNG...", true, None::<&str>)?;
     let undo = MenuItem::with_id(app, "menu:undo", "Undo", true, Some("CmdOrCtrl+Z"))?;
     let redo = MenuItem::with_id(app, "menu:redo", "Redo", true, Some("CmdOrCtrl+Shift+Z"))?;
+    let reload = MenuItem::with_id(app, "menu:reload", "Reload", true, Some("CmdOrCtrl+R"))?;
 
     let app_menu = SubmenuBuilder::new(app, "Jauto")
         .about(None)
@@ -114,7 +115,7 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
         .select_all()
         .build()?;
     let view_menu = SubmenuBuilder::new(app, "View")
-        .reload()
+        .item(&reload)
         .separator()
         .fullscreen()
         .build()?;
@@ -126,6 +127,13 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
 
     app.on_menu_event(|app_handle, event| {
         let id = event.id().0.as_str();
+        if id == "menu:reload" {
+            for window in app_handle.webview_windows().values() {
+                let _ = window.eval("window.location.reload()");
+            }
+            return;
+        }
+
         if id.starts_with("menu:") {
             let _ = app_handle.emit("menu-command", id);
         }
