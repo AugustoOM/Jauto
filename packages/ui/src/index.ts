@@ -4,6 +4,7 @@ export { default as AutomatonCanvas } from './components/AutomatonCanvas.vue';
 export { default as Toolbar } from './components/Toolbar.vue';
 export { default as InspectorPanel } from './components/InspectorPanel.vue';
 export { default as ThemeToggle } from './components/ThemeToggle.vue';
+export { ArrowLeft, Pencil, Save } from 'lucide-vue-next';
 
 export { useDocumentStore } from './stores/document';
 export { useHistoryStore } from './stores/history';

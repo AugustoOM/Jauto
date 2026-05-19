@@ -17,9 +17,9 @@ Thumbs.db
 .env
 .env.local
 
-# Electron
-out/
-release/
+# Tauri
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
 
 # Test
 coverage/

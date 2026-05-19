@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, provide } from 'vue';
+import { onMounted, provide, watch } from 'vue';
+import { listen } from '@tauri-apps/api/event';
 import {
   HomePage,
   EditorView,
@@ -10,6 +11,7 @@ import {
 } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { openAutomaton, saveAutomaton } from '@jauto/file-io';
+import DesktopAppHeader from './DesktopAppHeader.vue';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
@@ -52,9 +54,9 @@ async function handleOpen() {
 }
 
 onMounted(() => {
-  if (!window.electronAPI) return;
+  void listen<string>('menu-command', async (event) => {
+    const command = event.payload;
 
-  window.electronAPI.onMenuCommand(async (command: string) => {
     switch (command) {
       case 'menu:new-fa':
         docStore.newDocument('fa');
@@ -109,6 +111,11 @@ onMounted(() => {
   updateTitle();
 });
 
+watch(
+  () => [docStore.fileName, docStore.isDirty, docStore.currentView],
+  () => updateTitle(),
+);
+
 function updateTitle() {
   const name = docStore.fileName ?? 'untitled';
   const dirty = docStore.isDirty ? ' *' : '';
@@ -122,6 +129,7 @@ function updateTitle() {
       <HomePage @new="handleNew" @open="handleOpen" />
     </template>
     <template v-else>
+      <DesktopAppHeader />
       <main class="app-main">
         <EditorView />
       </main>
