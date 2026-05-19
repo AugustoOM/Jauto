@@ -1,5 +1,6 @@
 import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
+import type { TransitionHighlight } from '../stores/simulation';
 import { STATE_RADIUS } from '../constants';
 import { getSelfLoopGeometry, getSelfLoopSiblings } from './transitionGeometry';
 
@@ -17,6 +18,7 @@ export interface RenderOptions {
   scale: number;
   selected: SelectedElement;
   highlightedStates?: ReadonlySet<string>;
+  activeTransition?: TransitionHighlight | null;
 }
 
 export function useCanvasRenderer() {
@@ -27,7 +29,7 @@ export function useCanvasRenderer() {
     automaton: AnyAutomaton,
     options: RenderOptions,
   ) {
-    const { offsetX, offsetY, scale, selected, highlightedStates } = options;
+    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransition } = options;
 
     const canvasBg = readCssVar('--color-canvas-bg', '#111111');
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
@@ -49,13 +51,15 @@ export function useCanvasRenderer() {
       if (!from || !to) continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
-      drawTransition(ctx, from, to, t, automaton, isSelected, fontSans);
+      const isActiveTransition = activeTransition?.transitionId === t.id;
+      drawTransition(ctx, from, to, t, automaton, isSelected, isActiveTransition, fontSans);
     }
 
     for (const state of automaton.states) {
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
-      drawState(ctx, state, isSelected, isHighlighted, fontSans);
+      const simulationRole = getSimulationStateRole(state.id, activeTransition);
+      drawState(ctx, state, isSelected, isHighlighted, simulationRole, fontSans);
     }
 
     if (automaton.states.length === 0) {
@@ -107,6 +111,7 @@ export function useCanvasRenderer() {
     state: AutomatonState,
     isSelected: boolean,
     isHighlighted: boolean,
+    simulationRole: 'source' | 'target' | 'both' | null,
     fontSans: string,
   ) {
     const { x, y } = state;
@@ -118,22 +123,34 @@ export function useCanvasRenderer() {
     const strokeMain = readCssVar('--color-state-stroke', '#f0f0f0');
     const strokeMuted = readCssVar('--color-state-stroke-muted', '#aaa');
     const labelColor = readCssVar('--color-label-text', '#fff');
+    const sourceColor = readCssVar('--color-simulation-source', '#228be6');
+    const targetColor = readCssVar('--color-simulation-target', '#fa5252');
+    const edgeColor = readCssVar('--color-simulation-edge', '#ae3ec9');
 
-    if (isHighlighted) {
+    const roleColor =
+      simulationRole === 'source'
+        ? sourceColor
+        : simulationRole === 'target'
+          ? targetColor
+          : simulationRole === 'both'
+            ? edgeColor
+            : null;
+
+    if (isHighlighted || roleColor) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, STATE_RADIUS + 6, 0, Math.PI * 2);
-      ctx.fillStyle = glowStrong;
+      ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.28) : glowStrong;
       ctx.fill();
       ctx.restore();
     }
 
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = isHighlighted ? hlFill : stateFill;
+    ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.16) : isHighlighted ? hlFill : stateFill;
     ctx.fill();
-    ctx.strokeStyle = isHighlighted || isSelected ? accent : strokeMain;
-    ctx.lineWidth = isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
+    ctx.strokeStyle = roleColor ?? (isHighlighted || isSelected ? accent : strokeMain);
+    ctx.lineWidth = roleColor ? 3.5 : isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
     if (state.isFinal) {
@@ -186,17 +203,27 @@ export function useCanvasRenderer() {
     transition: AnyTransition,
     automaton: AnyAutomaton,
     isSelected: boolean,
+    isActiveTransition: boolean,
     fontSans: string,
   ) {
     const accent = readCssVar('--color-primary', '#4263eb');
     const strokeDefault = readCssVar('--color-transition-stroke', '#aaa');
-    ctx.strokeStyle = isSelected ? accent : strokeDefault;
-    ctx.lineWidth = isSelected ? 2 : 1.5;
-    ctx.fillStyle = isSelected ? accent : strokeDefault;
+    const simulationEdge = readCssVar('--color-simulation-edge', '#ae3ec9');
+    ctx.strokeStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
+    ctx.lineWidth = isActiveTransition ? 3 : isSelected ? 2 : 1.5;
+    ctx.fillStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
       const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
-      drawSelfLoop(ctx, from, transition, selfLoopSiblings, fontSans, isSelected);
+      drawSelfLoop(
+        ctx,
+        from,
+        transition,
+        selfLoopSiblings,
+        fontSans,
+        isSelected,
+        isActiveTransition,
+      );
       return;
     }
 
@@ -241,7 +268,11 @@ export function useCanvasRenderer() {
     const labelY = (from.y + to.y) / 2 + (needsCurve ? nx * 18 : nx * 14);
     const label = getTransitionLabel(transition);
 
-    const labelText = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    const labelText = isActiveTransition
+      ? simulationEdge
+      : isSelected
+        ? accent
+        : readCssVar('--color-label-text', '#fff');
     ctx.fillStyle = labelText;
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
@@ -270,6 +301,7 @@ export function useCanvasRenderer() {
     selfLoopSiblings: readonly AnyTransition[],
     fontSans: string,
     isSelected: boolean,
+    isActiveTransition: boolean,
   ) {
     const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
     const endAngle = geometry.endAngle - ARROW_SIZE / geometry.r;
@@ -287,7 +319,12 @@ export function useCanvasRenderer() {
 
     const label = getTransitionLabel(transition);
     const accent = readCssVar('--color-primary', '#4263eb');
-    ctx.fillStyle = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    const simulationEdge = readCssVar('--color-simulation-edge', '#ae3ec9');
+    ctx.fillStyle = isActiveTransition
+      ? simulationEdge
+      : isSelected
+        ? accent
+        : readCssVar('--color-label-text', '#fff');
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
@@ -320,6 +357,38 @@ export function useCanvasRenderer() {
       x: x - Math.cos(angle) * ARROW_SIZE,
       y: y - Math.sin(angle) * ARROW_SIZE,
     };
+  }
+
+  function getSimulationStateRole(
+    stateId: string,
+    activeTransition: TransitionHighlight | null | undefined,
+  ) {
+    if (!activeTransition) return null;
+    const isSource = activeTransition.sourceStateId === stateId;
+    const isTarget = activeTransition.targetStateId === stateId;
+    if (isSource && isTarget) return 'both';
+    if (isSource) return 'source';
+    if (isTarget) return 'target';
+    return null;
+  }
+
+  function colorWithAlpha(color: string, alpha: number): string {
+    if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
+      const hex =
+        color.length === 4
+          ? color
+              .slice(1)
+              .split('')
+              .map((char) => char + char)
+              .join('')
+          : color.slice(1);
+      const value = Number.parseInt(hex, 16);
+      const r = (value >> 16) & 255;
+      const g = (value >> 8) & 255;
+      const b = value & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    return color;
   }
 
   function getTransitionLabel(t: AnyTransition): string {

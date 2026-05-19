@@ -28,6 +28,7 @@ function draw() {
     scale: panZoom.scale.value,
     selected: docStore.selectedElement,
     highlightedStates: simStore.highlightedStates,
+    activeTransition: simStore.activeTransition,
   });
 
   if (interaction.isDrawingTransition.value && interaction.transitionSourceId.value) {

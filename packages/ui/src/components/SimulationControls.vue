@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Pause, SkipForward, RotateCcw, Square, Zap } from 'lucide-vue-next';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Square, Zap } from 'lucide-vue-next';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 
@@ -16,6 +16,10 @@ function handlePlay() {
 
 function handleReset() {
   sim.reset(docStore.automaton);
+}
+
+function handleNextStep() {
+  sim.nextStep(docStore.automaton);
 }
 </script>
 
@@ -42,10 +46,18 @@ function handleReset() {
         <button
           v-if="!sim.isRunning"
           class="sim-controls__btn"
-          :disabled="sim.status !== 'running'"
-          @click="sim.step()"
+          :disabled="!sim.canGoPrevious"
+          @click="sim.previousStep()"
         >
-          <SkipForward :size="13" /> Step
+          <SkipBack :size="13" /> Previous
+        </button>
+        <button
+          v-if="!sim.isRunning"
+          class="sim-controls__btn"
+          :disabled="!sim.canGoNext"
+          @click="handleNextStep"
+        >
+          <SkipForward :size="13" /> Next
         </button>
         <button
           v-if="!sim.isRunning"
@@ -72,6 +84,9 @@ function handleReset() {
     </div>
     <div v-if="sim.isActive" class="sim-controls__status">
       <span class="sim-controls__step">Step {{ sim.stepIndex }}</span>
+      <span v-if="sim.activeTransition" class="sim-controls__detail">
+        {{ sim.activeTransition.label }}
+      </span>
       <span
         class="sim-controls__result"
         :class="{
@@ -182,11 +197,24 @@ function handleReset() {
   align-items: center;
   gap: 12px;
   font-size: 13px;
+  min-width: 0;
 }
 
 .sim-controls__step {
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.sim-controls__detail {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-simulation-edge);
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 
 .sim-controls__result {
