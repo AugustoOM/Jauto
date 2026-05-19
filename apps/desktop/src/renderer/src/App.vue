@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, provide } from 'vue';
+import { onMounted, provide, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import {
   HomePage,
@@ -11,6 +11,7 @@ import {
 } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { openAutomaton, saveAutomaton } from '@jauto/file-io';
+import DesktopAppHeader from './DesktopAppHeader.vue';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
@@ -110,6 +111,11 @@ onMounted(() => {
   updateTitle();
 });
 
+watch(
+  () => [docStore.fileName, docStore.isDirty, docStore.currentView],
+  () => updateTitle(),
+);
+
 function updateTitle() {
   const name = docStore.fileName ?? 'untitled';
   const dirty = docStore.isDirty ? ' *' : '';
@@ -123,6 +129,7 @@ function updateTitle() {
       <HomePage @new="handleNew" @open="handleOpen" />
     </template>
     <template v-else>
+      <DesktopAppHeader />
       <main class="app-main">
         <EditorView />
       </main>

@@ -71,6 +71,7 @@ fn file_name(path: &Path, fallback: &str) -> String {
 }
 
 fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
+    let home = MenuItem::with_id(app, "menu:home", "Back to Home", true, Some("Alt+Left"))?;
     let new_fa = MenuItem::with_id(app, "menu:new-fa", "New DFA/NFA", true, Some("CmdOrCtrl+N"))?;
     let new_pda =
         MenuItem::with_id(app, "menu:new-pda", "New PDA", true, Some("CmdOrCtrl+Shift+N"))?;
@@ -94,6 +95,8 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
         .quit()
         .build()?;
     let file_menu = SubmenuBuilder::new(app, "File")
+        .item(&home)
+        .separator()
         .item(&new_fa)
         .item(&new_pda)
         .item(&new_tm)
