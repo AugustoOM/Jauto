@@ -3,7 +3,7 @@ import type { SelectedElement } from '../stores/document';
 import { STATE_RADIUS } from '../constants';
 import { getSelfLoopGeometry, getSelfLoopSiblings } from './transitionGeometry';
 
-const ARROW_SIZE = 10;
+const ARROW_SIZE = 6;
 
 export function readCssVar(name: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback;
@@ -158,11 +158,13 @@ export function useCanvasRenderer() {
   function drawInitialArrow(ctx: CanvasRenderingContext2D, state: AutomatonState) {
     const startX = state.x - STATE_RADIUS - 30;
     const endX = state.x - STATE_RADIUS;
+    const arrowAngle = 0;
     const y = state.y;
+    const tail = getArrowTailPoint(endX, y, arrowAngle);
 
     ctx.beginPath();
     ctx.moveTo(startX, y);
-    ctx.lineTo(endX, y);
+    ctx.lineTo(tail.x, tail.y);
     const arrowColor = readCssVar('--color-initial-arrow', '#aaa');
     ctx.strokeStyle = arrowColor;
     ctx.lineWidth = 1.5;
@@ -218,18 +220,22 @@ export function useCanvasRenderer() {
     const endY = to.y - ny * STATE_RADIUS;
 
     ctx.beginPath();
+    let arrowAngle = Math.atan2(dy, dx);
     if (needsCurve) {
       const cx = (startX + endX) / 2 + (-ny) * 30;
       const cy = (startY + endY) / 2 + nx * 30;
+      arrowAngle = Math.atan2(endY - cy, endX - cx);
+      const tail = getArrowTailPoint(endX, endY, arrowAngle);
       ctx.moveTo(startX, startY);
-      ctx.quadraticCurveTo(cx, cy, endX, endY);
+      ctx.quadraticCurveTo(cx, cy, tail.x, tail.y);
     } else {
+      const tail = getArrowTailPoint(endX, endY, arrowAngle);
       ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
+      ctx.lineTo(tail.x, tail.y);
     }
     ctx.stroke();
 
-    drawArrowHead(ctx, endX, endY, Math.atan2(dy, dx));
+    drawArrowHead(ctx, endX, endY, arrowAngle);
 
     const labelX = (from.x + to.x) / 2 + (needsCurve ? (-ny) * 18 : (-ny) * 14);
     const labelY = (from.y + to.y) / 2 + (needsCurve ? nx * 18 : nx * 14);
@@ -266,12 +272,18 @@ export function useCanvasRenderer() {
     isSelected: boolean,
   ) {
     const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
+    const endAngle = geometry.endAngle - ARROW_SIZE / geometry.r;
+    const tail = {
+      x: geometry.cx + Math.cos(endAngle) * geometry.r,
+      y: geometry.cy + Math.sin(endAngle) * geometry.r,
+    };
+    const arrowAngle = Math.atan2(geometry.arrowY - tail.y, geometry.arrowX - tail.x);
 
     ctx.beginPath();
-    ctx.arc(geometry.cx, geometry.cy, geometry.r, geometry.startAngle, geometry.endAngle);
+    ctx.arc(geometry.cx, geometry.cy, geometry.r, geometry.startAngle, endAngle);
     ctx.stroke();
 
-    drawArrowHead(ctx, geometry.arrowX, geometry.arrowY, geometry.arrowAngle);
+    drawArrowHead(ctx, geometry.arrowX, geometry.arrowY, arrowAngle);
 
     const label = getTransitionLabel(transition);
     const accent = readCssVar('--color-primary', '#4263eb');
@@ -283,6 +295,9 @@ export function useCanvasRenderer() {
   }
 
   function drawArrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
+    const fillColor = ctx.fillStyle;
+    const outlineColor = readCssVar('--color-state-fill', 'rgba(174, 167, 167, 0.08)');
+
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -291,8 +306,20 @@ export function useCanvasRenderer() {
     ctx.lineTo(-ARROW_SIZE, -ARROW_SIZE / 2);
     ctx.lineTo(-ARROW_SIZE, ARROW_SIZE / 2);
     ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.restore();
+  }
+
+  function getArrowTailPoint(x: number, y: number, angle: number) {
+    return {
+      x: x - Math.cos(angle) * ARROW_SIZE,
+      y: y - Math.sin(angle) * ARROW_SIZE,
+    };
   }
 
   function getTransitionLabel(t: AnyTransition): string {

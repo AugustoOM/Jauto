@@ -1,9 +1,10 @@
 import type { AutomatonState, AnyTransition } from '@jauto/core';
-import { SELF_LOOP_OFFSET, SELF_LOOP_RADIUS, STATE_RADIUS } from '../constants';
+import { SELF_LOOP_RADIUS, STATE_RADIUS } from '../constants';
 
-const SELF_LOOP_SPACING = SELF_LOOP_RADIUS * 2 + 12;
-const SELF_LOOP_VERTICAL_STAGGER = 8;
-const SELF_LOOP_END_ANGLE = Math.PI * 2 - 0.3;
+const SELF_LOOP_RADIUS_STEP = 12;
+const SELF_LOOP_START_NODE_ANGLE = -2.2;
+const SELF_LOOP_END_NODE_ANGLE = -0.94;
+const SELF_LOOP_CONTACT_STEP = 0.26;
 
 export interface SelfLoopGeometry {
   cx: number;
@@ -31,28 +32,43 @@ export function getSelfLoopGeometry(
   transition: AnyTransition,
 ): SelfLoopGeometry {
   const index = Math.max(0, siblings.findIndex((t) => t.id === transition.id));
-  const centerIndex = (siblings.length - 1) / 2;
-  const slot = index - centerIndex;
-  const cx = state.x + slot * SELF_LOOP_SPACING;
-  const cy =
-    state.y -
-    STATE_RADIUS -
-    SELF_LOOP_OFFSET -
-    Math.abs(slot) * SELF_LOOP_VERTICAL_STAGGER;
-  const r = SELF_LOOP_RADIUS;
-  const arrowX = cx + Math.cos(SELF_LOOP_END_ANGLE) * r;
-  const arrowY = cy + Math.sin(SELF_LOOP_END_ANGLE) * r;
+  const startContactAngle = SELF_LOOP_START_NODE_ANGLE - index * SELF_LOOP_CONTACT_STEP;
+  const endContactAngle = SELF_LOOP_END_NODE_ANGLE + index * SELF_LOOP_CONTACT_STEP;
+  const startX = state.x + Math.cos(startContactAngle) * STATE_RADIUS;
+  const startY = state.y + Math.sin(startContactAngle) * STATE_RADIUS;
+  const endX = state.x + Math.cos(endContactAngle) * STATE_RADIUS;
+  const endY = state.y + Math.sin(endContactAngle) * STATE_RADIUS;
+  const chordX = endX - startX;
+  const chordY = endY - startY;
+  const chordLength = Math.sqrt(chordX * chordX + chordY * chordY);
+  const r = Math.max(SELF_LOOP_RADIUS + index * SELF_LOOP_RADIUS_STEP, chordLength / 2 + 1);
+  const midpointX = (startX + endX) / 2;
+  const midpointY = (startY + endY) / 2;
+  const centerDistance = Math.sqrt(r * r - (chordLength / 2) ** 2);
+  const normalX = -chordY / chordLength;
+  const normalY = chordX / chordLength;
+  const centerA = {
+    x: midpointX + normalX * centerDistance,
+    y: midpointY + normalY * centerDistance,
+  };
+  const centerB = {
+    x: midpointX - normalX * centerDistance,
+    y: midpointY - normalY * centerDistance,
+  };
+  const center = centerA.y < centerB.y ? centerA : centerB;
+  const startAngle = Math.atan2(startY - center.y, startX - center.x);
+  const endAngle = Math.atan2(endY - center.y, endX - center.x);
 
   return {
-    cx,
-    cy,
+    cx: center.x,
+    cy: center.y,
     r,
-    labelX: cx,
-    labelY: cy - r - 4,
-    arrowX,
-    arrowY,
-    arrowAngle: Math.PI / 2 + 0.5,
-    startAngle: 0.3,
-    endAngle: SELF_LOOP_END_ANGLE,
+    labelX: center.x,
+    labelY: center.y - r - 4,
+    arrowX: endX,
+    arrowY: endY,
+    arrowAngle: endAngle + Math.PI / 2,
+    startAngle,
+    endAngle,
   };
 }
