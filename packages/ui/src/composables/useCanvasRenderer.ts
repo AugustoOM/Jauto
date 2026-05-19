@@ -2,7 +2,12 @@ import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
 import type { TransitionHighlight } from '../stores/simulation';
 import { STATE_RADIUS } from '../constants';
-import { getSelfLoopGeometry, getSelfLoopSiblings } from './transitionGeometry';
+import {
+  getEdgeGeometry,
+  getParallelEdgeSiblings,
+  getSelfLoopGeometry,
+  getSelfLoopSiblings,
+} from './transitionGeometry';
 
 const ARROW_SIZE = 6;
 
@@ -227,45 +232,23 @@ export function useCanvasRenderer() {
       return;
     }
 
-    const parallelCount = automaton.transitions.filter(
-      (t) =>
-        (t.from === from.id && t.to === to.id) || (t.from === to.id && t.to === from.id),
-    ).length;
-    const needsCurve = parallelCount > 1;
-
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist === 0) return;
-
-    const nx = dx / dist;
-    const ny = dy / dist;
-
-    const startX = from.x + nx * STATE_RADIUS;
-    const startY = from.y + ny * STATE_RADIUS;
-    const endX = to.x - nx * STATE_RADIUS;
-    const endY = to.y - ny * STATE_RADIUS;
+    const parallelSiblings = getParallelEdgeSiblings(automaton.transitions, from.id, to.id);
+    const geometry = getEdgeGeometry(from, to, parallelSiblings, transition);
+    if (!geometry) return;
+    const tail = getArrowTailPoint(geometry.endX, geometry.endY, geometry.arrowAngle);
 
     ctx.beginPath();
-    let arrowAngle = Math.atan2(dy, dx);
-    if (needsCurve) {
-      const cx = (startX + endX) / 2 + (-ny) * 30;
-      const cy = (startY + endY) / 2 + nx * 30;
-      arrowAngle = Math.atan2(endY - cy, endX - cx);
-      const tail = getArrowTailPoint(endX, endY, arrowAngle);
-      ctx.moveTo(startX, startY);
-      ctx.quadraticCurveTo(cx, cy, tail.x, tail.y);
+    if (geometry.isCurved) {
+      ctx.moveTo(geometry.startX, geometry.startY);
+      ctx.quadraticCurveTo(geometry.controlX, geometry.controlY, tail.x, tail.y);
     } else {
-      const tail = getArrowTailPoint(endX, endY, arrowAngle);
-      ctx.moveTo(startX, startY);
+      ctx.moveTo(geometry.startX, geometry.startY);
       ctx.lineTo(tail.x, tail.y);
     }
     ctx.stroke();
 
-    drawArrowHead(ctx, endX, endY, arrowAngle);
+    drawArrowHead(ctx, geometry.endX, geometry.endY, geometry.arrowAngle);
 
-    const labelX = (from.x + to.x) / 2 + (needsCurve ? (-ny) * 18 : (-ny) * 14);
-    const labelY = (from.y + to.y) / 2 + (needsCurve ? nx * 18 : nx * 14);
     const label = getTransitionLabel(transition);
 
     const labelText = isActiveTransition
@@ -283,15 +266,15 @@ export function useCanvasRenderer() {
     ctx.save();
     ctx.fillStyle = readCssVar('--color-label-chip-bg', 'rgba(255,255,255,0.06)');
     ctx.fillRect(
-      labelX - metrics.width / 2 - padding,
-      labelY - 7 - padding,
+      geometry.labelX - metrics.width / 2 - padding,
+      geometry.labelY - 7 - padding,
       metrics.width + padding * 2,
       14 + padding * 2,
     );
     ctx.restore();
 
     ctx.fillStyle = labelText;
-    ctx.fillText(label, labelX, labelY);
+    ctx.fillText(label, geometry.labelX, geometry.labelY);
   }
 
   function drawSelfLoop(
