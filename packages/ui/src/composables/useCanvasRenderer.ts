@@ -1,7 +1,7 @@
 import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
 import { STATE_RADIUS } from '../constants';
-import { SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
+import { getSelfLoopGeometry, getSelfLoopSiblings } from './transitionGeometry';
 
 const ARROW_SIZE = 10;
 
@@ -193,7 +193,8 @@ export function useCanvasRenderer() {
     ctx.fillStyle = isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
-      drawSelfLoop(ctx, from, transition, fontSans, isSelected);
+      const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
+      drawSelfLoop(ctx, from, transition, selfLoopSiblings, fontSans, isSelected);
       return;
     }
 
@@ -260,21 +261,17 @@ export function useCanvasRenderer() {
     ctx: CanvasRenderingContext2D,
     state: AutomatonState,
     transition: AnyTransition,
+    selfLoopSiblings: readonly AnyTransition[],
     fontSans: string,
     isSelected: boolean,
   ) {
-    const cx = state.x;
-    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
-    const r = SELF_LOOP_RADIUS;
+    const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
 
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0.3, Math.PI * 2 - 0.3);
+    ctx.arc(geometry.cx, geometry.cy, geometry.r, geometry.startAngle, geometry.endAngle);
     ctx.stroke();
 
-    const arrowAngle = Math.PI * 2 - 0.3;
-    const ax = cx + Math.cos(arrowAngle) * r;
-    const ay = cy + Math.sin(arrowAngle) * r;
-    drawArrowHead(ctx, ax, ay, Math.PI / 2 + 0.5);
+    drawArrowHead(ctx, geometry.arrowX, geometry.arrowY, geometry.arrowAngle);
 
     const label = getTransitionLabel(transition);
     const accent = readCssVar('--color-primary', '#4263eb');
@@ -282,7 +279,7 @@ export function useCanvasRenderer() {
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(label, cx, cy - r - 4);
+    ctx.fillText(label, geometry.labelX, geometry.labelY);
   }
 
   function drawArrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {

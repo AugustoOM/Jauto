@@ -1,5 +1,6 @@
 import type { AutomatonState, AnyTransition, AnyAutomaton } from '@jauto/core';
-import { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
+import { STATE_RADIUS, TRANSITION_HIT_TOLERANCE } from '../constants';
+import { getSelfLoopGeometry, getSelfLoopSiblings } from './transitionGeometry';
 
 export function useHitTesting() {
   function hitTestState(
@@ -30,7 +31,8 @@ export function useHitTesting() {
       if (!from || !to) continue;
 
       if (from.id === to.id) {
-        if (hitTestSelfLoop(x, y, from)) return t;
+        const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
+        if (hitTestSelfLoop(x, y, from, t, selfLoopSiblings)) return t;
       } else {
         if (hitTestLine(x, y, from.x, from.y, to.x, to.y)) return t;
       }
@@ -64,12 +66,12 @@ export function useHitTesting() {
     px: number,
     py: number,
     state: AutomatonState,
+    transition: AnyTransition,
+    selfLoopSiblings: readonly AnyTransition[],
   ): boolean {
-    const cx = state.x;
-    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
-    const r = SELF_LOOP_RADIUS;
-    const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
-    return Math.abs(dist - r) <= TRANSITION_HIT_TOLERANCE;
+    const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
+    const dist = Math.sqrt((px - geometry.cx) ** 2 + (py - geometry.cy) ** 2);
+    return Math.abs(dist - geometry.r) <= TRANSITION_HIT_TOLERANCE;
   }
 
   return { hitTestState, hitTestTransition, STATE_RADIUS };
