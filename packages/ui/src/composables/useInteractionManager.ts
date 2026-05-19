@@ -61,6 +61,7 @@ export function useInteractionManager(
     };
     historyStore.dispatch(new AddStateCommand(newState));
     docStore.select({ type: 'state', id: newState.id });
+    docStore.requestInspectorFocus({ type: 'state', field: 'name' });
   }
 
   function deleteAt(x: number, y: number) {
@@ -200,6 +201,8 @@ export function useInteractionManager(
           transition = { id, from: transitionSourceId.value, to: targetState.id, read: '' };
         }
         historyStore.dispatch(new AddTransitionCommand(transition));
+        docStore.select({ type: 'transition', id });
+        docStore.requestInspectorFocus({ type: 'transition', field: 'read' });
       }
 
       isDrawingTransition.value = false;

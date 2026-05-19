@@ -10,6 +10,12 @@ export type SelectedElement =
 
 export type EditorTool = 'select' | 'add-state' | 'add-transition' | 'delete';
 export type AppView = 'home' | 'editor';
+export type InspectorFocusTarget =
+  | { type: 'state'; field: 'name'; nonce: number }
+  | { type: 'transition'; field: string; nonce: number };
+export type InspectorFocusRequest =
+  | { type: 'state'; field: 'name' }
+  | { type: 'transition'; field: string };
 
 export const useDocumentStore = defineStore('document', () => {
   const currentView = ref<AppView>('home');
@@ -17,8 +23,10 @@ export const useDocumentStore = defineStore('document', () => {
   const fileName = ref<string | null>(null);
   const isDirty = ref(false);
   const selectedElement = ref<SelectedElement>(null);
+  const inspectorFocusTarget = ref<InspectorFocusTarget | null>(null);
   const activeTool = ref<EditorTool>('select');
   const heldModifier = ref<'shift' | 'ctrl' | null>(null);
+  let inspectorFocusNonce = 0;
 
   const automatonKind = computed<AutomatonKind>(() => automaton.value.kind);
 
@@ -51,8 +59,17 @@ export const useDocumentStore = defineStore('document', () => {
     selectedElement.value = element;
   }
 
+  function requestInspectorFocus(target: InspectorFocusRequest) {
+    if (target.type === 'state') {
+      inspectorFocusTarget.value = { type: 'state', field: target.field, nonce: ++inspectorFocusNonce };
+      return;
+    }
+    inspectorFocusTarget.value = { type: 'transition', field: target.field, nonce: ++inspectorFocusNonce };
+  }
+
   function clearSelection() {
     selectedElement.value = null;
+    inspectorFocusTarget.value = null;
   }
 
   function setTool(tool: EditorTool) {
@@ -77,6 +94,7 @@ export const useDocumentStore = defineStore('document', () => {
     fileName,
     isDirty,
     selectedElement,
+    inspectorFocusTarget,
     activeTool,
     heldModifier,
     automatonKind,
@@ -86,6 +104,7 @@ export const useDocumentStore = defineStore('document', () => {
     goHome,
     rename,
     select,
+    requestInspectorFocus,
     clearSelection,
     setTool,
     markSaved,

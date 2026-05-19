@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Check } from 'lucide-vue-next';
 import { useDocumentStore } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
@@ -41,6 +41,13 @@ const stateDraft = ref<{
 } | null>(null);
 
 const transitionDraft = ref<Record<string, string> | null>(null);
+const stateNameInput = ref<HTMLInputElement | null>(null);
+const transitionInputRefs = new Map<string, HTMLInputElement>();
+
+function setTransitionInputRef(key: string, el: unknown) {
+  if (el instanceof HTMLInputElement) transitionInputRefs.set(key, el);
+  else transitionInputRefs.delete(key);
+}
 
 watch(
   () => selectedState.value,
@@ -78,6 +85,21 @@ watch(
     transitionDraft.value = d;
   },
   { immediate: true },
+);
+
+watch(
+  () => docStore.inspectorFocusTarget,
+  async (target) => {
+    if (!target) return;
+    await nextTick();
+    const input =
+      target.type === 'state'
+        ? stateNameInput.value
+        : transitionInputRefs.get(target.field) ?? transitionInputRefs.get('read') ?? null;
+    input?.focus();
+    input?.select();
+  },
+  { flush: 'post' },
 );
 
 const hasPendingStateEdits = computed(() => {
@@ -184,7 +206,12 @@ const transitionFields = computed(() => {
       <h3 class="inspector__title">State</h3>
       <label class="inspector__field">
         <span class="inspector__label">Name</span>
-        <input v-model="stateDraft.name" class="inspector__input" />
+        <input
+          ref="stateNameInput"
+          v-model="stateDraft.name"
+          class="inspector__input"
+          @keydown.enter.prevent="applyChanges"
+        />
       </label>
       <label class="inspector__field inspector__field--row">
         <input v-model="stateDraft.isInitial" type="checkbox" />
@@ -206,7 +233,12 @@ const transitionFields = computed(() => {
       </div>
       <label v-for="field in transitionFields" :key="field.key" class="inspector__field">
         <span class="inspector__label">{{ field.label }}</span>
-        <input v-model="transitionDraft[field.key]" class="inspector__input" />
+        <input
+          :ref="(el) => setTransitionInputRef(field.key, el)"
+          v-model="transitionDraft[field.key]"
+          class="inspector__input"
+          @keydown.enter.prevent="applyChanges"
+        />
       </label>
     </div>
 
