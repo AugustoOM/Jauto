@@ -17,7 +17,7 @@
 ## Tech Stack
 
 - TypeScript, Vue 3, Vite
-- Tauri (native desktop for Windows and macOS)
+- Tauri 2 (native desktop shell for Windows and macOS)
 - pnpm workspaces + Turborepo (monorepo)
 
 ## Getting Started
@@ -50,7 +50,14 @@ pnpm dev
 ### Build
 
 ```bash
+# Web + desktop workspace builds
 pnpm build
+
+# Desktop frontend only
+pnpm --filter @jauto/desktop build:frontend
+
+# Native desktop bundle (requires Rust/Cargo)
+pnpm --filter @jauto/desktop build
 ```
 
 ### Test
@@ -58,6 +65,19 @@ pnpm build
 ```bash
 pnpm test
 ```
+
+## Desktop App
+
+The desktop uses Tauri. The Vue renderer lives in
+`apps/desktop/src/renderer`, while the native shell, menu integration, file
+dialogs, and save/export commands live in `apps/desktop/src-tauri`.
+
+Native desktop support currently includes:
+
+- Windows and macOS builds through Tauri
+- Native open/save dialogs for `.jff` files
+- PNG export through the native save dialog
+- Native app menu actions bridged into the Vue editor
 
 ## Project Structure
 
@@ -72,6 +92,7 @@ jauto/
   apps/
     web/         — Browser application (Vue 3 SPA)
     desktop/     — Native desktop application (Tauri)
+      src-tauri/ — Rust native shell, menu, and file commands
 ```
 
 ## License
