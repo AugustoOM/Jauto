@@ -71,6 +71,9 @@
   --color-state-final: var(--color-success);
   --color-transition-stroke: var(--automaton-label);
   --color-transition-selected: var(--accent);
+  --color-simulation-source: #228be6;
+  --color-simulation-target: #fa5252;
+  --color-simulation-edge: #ae3ec9;
   --color-label-chip-bg: var(--code-bg);
   --color-label-text: var(--automaton-text);
   --color-initial-arrow: var(--automaton-label);

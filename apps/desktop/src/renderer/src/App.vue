@@ -22,9 +22,11 @@ const fileService = new DesktopFileService();
 async function saveCurrentDocument() {
   try {
     const name = docStore.fileName ?? 'untitled.jff';
-    await saveAutomaton(fileService, docStore.automaton, name);
-    docStore.markSaved(name);
-    updateTitle();
+    const saved = await saveAutomaton(fileService, docStore.automaton, name);
+    if (saved) {
+      docStore.markSaved(name);
+      updateTitle();
+    }
   } catch (err) {
     console.error('Failed to save:', err);
   }

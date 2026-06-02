@@ -15,11 +15,11 @@ export class DesktopFileService implements FileService {
   }
 
   async saveFile(name: string, content: string): Promise<boolean> {
-    const result = await invoke<string | false>('save_file', {
+    const result = await invoke<string | null>('save_file', {
       content,
-      default_name: name,
+      defaultName: name,
     });
-    return result !== false;
+    return result !== null;
   }
 
   async exportImage(blob: Blob, name: string): Promise<boolean> {
@@ -27,7 +27,7 @@ export class DesktopFileService implements FileService {
     const bytes = Array.from(new Uint8Array(buffer));
     return invoke<boolean>('export_image', {
       bytes,
-      default_name: name,
+      defaultName: name,
     });
   }
 }

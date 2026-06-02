@@ -1,5 +1,11 @@
 import type { AutomatonState, AnyTransition, AnyAutomaton } from '@jauto/core';
-import { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
+import { STATE_RADIUS, TRANSITION_HIT_TOLERANCE } from '../constants';
+import {
+  getEdgeGeometry,
+  getParallelEdgeSiblings,
+  getSelfLoopGeometry,
+  getSelfLoopSiblings,
+} from './transitionGeometry';
 
 export function useHitTesting() {
   function hitTestState(
@@ -30,9 +36,11 @@ export function useHitTesting() {
       if (!from || !to) continue;
 
       if (from.id === to.id) {
-        if (hitTestSelfLoop(x, y, from)) return t;
+        const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
+        if (hitTestSelfLoop(x, y, from, t, selfLoopSiblings)) return t;
       } else {
-        if (hitTestLine(x, y, from.x, from.y, to.x, to.y)) return t;
+        const parallelSiblings = getParallelEdgeSiblings(automaton.transitions, from.id, to.id);
+        if (hitTestEdge(x, y, from, to, t, parallelSiblings)) return t;
       }
     }
     return null;
@@ -64,12 +72,43 @@ export function useHitTesting() {
     px: number,
     py: number,
     state: AutomatonState,
+    transition: AnyTransition,
+    selfLoopSiblings: readonly AnyTransition[],
   ): boolean {
-    const cx = state.x;
-    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
-    const r = SELF_LOOP_RADIUS;
-    const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
-    return Math.abs(dist - r) <= TRANSITION_HIT_TOLERANCE;
+    const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
+    const dist = Math.sqrt((px - geometry.cx) ** 2 + (py - geometry.cy) ** 2);
+    return Math.abs(dist - geometry.r) <= TRANSITION_HIT_TOLERANCE;
+  }
+
+  function hitTestEdge(
+    px: number,
+    py: number,
+    from: AutomatonState,
+    to: AutomatonState,
+    transition: AnyTransition,
+    parallelSiblings: readonly AnyTransition[],
+  ): boolean {
+    const geometry = getEdgeGeometry(from, to, parallelSiblings, transition);
+    if (!geometry) return false;
+    if (!geometry.isCurved) {
+      return hitTestLine(px, py, geometry.startX, geometry.startY, geometry.endX, geometry.endY);
+    }
+
+    let previous = { x: geometry.startX, y: geometry.startY };
+    for (let i = 1; i <= 24; i++) {
+      const t = i / 24;
+      const current = {
+        x: quadraticPoint(geometry.startX, geometry.controlX, geometry.endX, t),
+        y: quadraticPoint(geometry.startY, geometry.controlY, geometry.endY, t),
+      };
+      if (hitTestLine(px, py, previous.x, previous.y, current.x, current.y)) return true;
+      previous = current;
+    }
+    return false;
+  }
+
+  function quadraticPoint(start: number, control: number, end: number, t: number): number {
+    return (1 - t) ** 2 * start + 2 * (1 - t) * t * control + t ** 2 * end;
   }
 
   return { hitTestState, hitTestTransition, STATE_RADIUS };

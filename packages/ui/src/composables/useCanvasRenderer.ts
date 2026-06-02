@@ -1,9 +1,15 @@
 import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
+import type { TransitionHighlight } from '../stores/simulation';
 import { STATE_RADIUS } from '../constants';
-import { SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from '../constants';
+import {
+  getEdgeGeometry,
+  getParallelEdgeSiblings,
+  getSelfLoopGeometry,
+  getSelfLoopSiblings,
+} from './transitionGeometry';
 
-const ARROW_SIZE = 10;
+const ARROW_SIZE = 6;
 
 export function readCssVar(name: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback;
@@ -17,6 +23,7 @@ export interface RenderOptions {
   scale: number;
   selected: SelectedElement;
   highlightedStates?: ReadonlySet<string>;
+  activeTransition?: TransitionHighlight | null;
 }
 
 export function useCanvasRenderer() {
@@ -27,7 +34,7 @@ export function useCanvasRenderer() {
     automaton: AnyAutomaton,
     options: RenderOptions,
   ) {
-    const { offsetX, offsetY, scale, selected, highlightedStates } = options;
+    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransition } = options;
 
     const canvasBg = readCssVar('--color-canvas-bg', '#111111');
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
@@ -49,13 +56,15 @@ export function useCanvasRenderer() {
       if (!from || !to) continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
-      drawTransition(ctx, from, to, t, automaton, isSelected, fontSans);
+      const isActiveTransition = activeTransition?.transitionId === t.id;
+      drawTransition(ctx, from, to, t, automaton, isSelected, isActiveTransition, fontSans);
     }
 
     for (const state of automaton.states) {
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
-      drawState(ctx, state, isSelected, isHighlighted, fontSans);
+      const simulationRole = getSimulationStateRole(state.id, activeTransition);
+      drawState(ctx, state, isSelected, isHighlighted, simulationRole, fontSans);
     }
 
     if (automaton.states.length === 0) {
@@ -107,6 +116,7 @@ export function useCanvasRenderer() {
     state: AutomatonState,
     isSelected: boolean,
     isHighlighted: boolean,
+    simulationRole: 'source' | 'target' | 'both' | null,
     fontSans: string,
   ) {
     const { x, y } = state;
@@ -118,22 +128,34 @@ export function useCanvasRenderer() {
     const strokeMain = readCssVar('--color-state-stroke', '#f0f0f0');
     const strokeMuted = readCssVar('--color-state-stroke-muted', '#aaa');
     const labelColor = readCssVar('--color-label-text', '#fff');
+    const sourceColor = readCssVar('--color-simulation-source', '#228be6');
+    const targetColor = readCssVar('--color-simulation-target', '#fa5252');
+    const edgeColor = readCssVar('--color-simulation-edge', '#ae3ec9');
 
-    if (isHighlighted) {
+    const roleColor =
+      simulationRole === 'source'
+        ? sourceColor
+        : simulationRole === 'target'
+          ? targetColor
+          : simulationRole === 'both'
+            ? edgeColor
+            : null;
+
+    if (isHighlighted || roleColor) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, STATE_RADIUS + 6, 0, Math.PI * 2);
-      ctx.fillStyle = glowStrong;
+      ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.28) : glowStrong;
       ctx.fill();
       ctx.restore();
     }
 
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = isHighlighted ? hlFill : stateFill;
+    ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.16) : isHighlighted ? hlFill : stateFill;
     ctx.fill();
-    ctx.strokeStyle = isHighlighted || isSelected ? accent : strokeMain;
-    ctx.lineWidth = isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
+    ctx.strokeStyle = roleColor ?? (isHighlighted || isSelected ? accent : strokeMain);
+    ctx.lineWidth = roleColor ? 3.5 : isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
     if (state.isFinal) {
@@ -158,11 +180,13 @@ export function useCanvasRenderer() {
   function drawInitialArrow(ctx: CanvasRenderingContext2D, state: AutomatonState) {
     const startX = state.x - STATE_RADIUS - 30;
     const endX = state.x - STATE_RADIUS;
+    const arrowAngle = 0;
     const y = state.y;
+    const tail = getArrowTailPoint(endX, y, arrowAngle);
 
     ctx.beginPath();
     ctx.moveTo(startX, y);
-    ctx.lineTo(endX, y);
+    ctx.lineTo(tail.x, tail.y);
     const arrowColor = readCssVar('--color-initial-arrow', '#aaa');
     ctx.strokeStyle = arrowColor;
     ctx.lineWidth = 1.5;
@@ -184,57 +208,54 @@ export function useCanvasRenderer() {
     transition: AnyTransition,
     automaton: AnyAutomaton,
     isSelected: boolean,
+    isActiveTransition: boolean,
     fontSans: string,
   ) {
     const accent = readCssVar('--color-primary', '#4263eb');
     const strokeDefault = readCssVar('--color-transition-stroke', '#aaa');
-    ctx.strokeStyle = isSelected ? accent : strokeDefault;
-    ctx.lineWidth = isSelected ? 2 : 1.5;
-    ctx.fillStyle = isSelected ? accent : strokeDefault;
+    const simulationEdge = readCssVar('--color-simulation-edge', '#ae3ec9');
+    ctx.strokeStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
+    ctx.lineWidth = isActiveTransition ? 3 : isSelected ? 2 : 1.5;
+    ctx.fillStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
-      drawSelfLoop(ctx, from, transition, fontSans, isSelected);
+      const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
+      drawSelfLoop(
+        ctx,
+        from,
+        transition,
+        selfLoopSiblings,
+        fontSans,
+        isSelected,
+        isActiveTransition,
+      );
       return;
     }
 
-    const parallelCount = automaton.transitions.filter(
-      (t) =>
-        (t.from === from.id && t.to === to.id) || (t.from === to.id && t.to === from.id),
-    ).length;
-    const needsCurve = parallelCount > 1;
-
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist === 0) return;
-
-    const nx = dx / dist;
-    const ny = dy / dist;
-
-    const startX = from.x + nx * STATE_RADIUS;
-    const startY = from.y + ny * STATE_RADIUS;
-    const endX = to.x - nx * STATE_RADIUS;
-    const endY = to.y - ny * STATE_RADIUS;
+    const parallelSiblings = getParallelEdgeSiblings(automaton.transitions, from.id, to.id);
+    const geometry = getEdgeGeometry(from, to, parallelSiblings, transition);
+    if (!geometry) return;
+    const tail = getArrowTailPoint(geometry.endX, geometry.endY, geometry.arrowAngle);
 
     ctx.beginPath();
-    if (needsCurve) {
-      const cx = (startX + endX) / 2 + (-ny) * 30;
-      const cy = (startY + endY) / 2 + nx * 30;
-      ctx.moveTo(startX, startY);
-      ctx.quadraticCurveTo(cx, cy, endX, endY);
+    if (geometry.isCurved) {
+      ctx.moveTo(geometry.startX, geometry.startY);
+      ctx.quadraticCurveTo(geometry.controlX, geometry.controlY, tail.x, tail.y);
     } else {
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
+      ctx.moveTo(geometry.startX, geometry.startY);
+      ctx.lineTo(tail.x, tail.y);
     }
     ctx.stroke();
 
-    drawArrowHead(ctx, endX, endY, Math.atan2(dy, dx));
+    drawArrowHead(ctx, geometry.endX, geometry.endY, geometry.arrowAngle);
 
-    const labelX = (from.x + to.x) / 2 + (needsCurve ? (-ny) * 18 : (-ny) * 14);
-    const labelY = (from.y + to.y) / 2 + (needsCurve ? nx * 18 : nx * 14);
     const label = getTransitionLabel(transition);
 
-    const labelText = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    const labelText = isActiveTransition
+      ? simulationEdge
+      : isSelected
+        ? accent
+        : readCssVar('--color-label-text', '#fff');
     ctx.fillStyle = labelText;
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
@@ -245,47 +266,58 @@ export function useCanvasRenderer() {
     ctx.save();
     ctx.fillStyle = readCssVar('--color-label-chip-bg', 'rgba(255,255,255,0.06)');
     ctx.fillRect(
-      labelX - metrics.width / 2 - padding,
-      labelY - 7 - padding,
+      geometry.labelX - metrics.width / 2 - padding,
+      geometry.labelY - 7 - padding,
       metrics.width + padding * 2,
       14 + padding * 2,
     );
     ctx.restore();
 
     ctx.fillStyle = labelText;
-    ctx.fillText(label, labelX, labelY);
+    ctx.fillText(label, geometry.labelX, geometry.labelY);
   }
 
   function drawSelfLoop(
     ctx: CanvasRenderingContext2D,
     state: AutomatonState,
     transition: AnyTransition,
+    selfLoopSiblings: readonly AnyTransition[],
     fontSans: string,
     isSelected: boolean,
+    isActiveTransition: boolean,
   ) {
-    const cx = state.x;
-    const cy = state.y - STATE_RADIUS - SELF_LOOP_OFFSET;
-    const r = SELF_LOOP_RADIUS;
+    const geometry = getSelfLoopGeometry(state, selfLoopSiblings, transition);
+    const endAngle = geometry.endAngle - ARROW_SIZE / geometry.r;
+    const tail = {
+      x: geometry.cx + Math.cos(endAngle) * geometry.r,
+      y: geometry.cy + Math.sin(endAngle) * geometry.r,
+    };
+    const arrowAngle = Math.atan2(geometry.arrowY - tail.y, geometry.arrowX - tail.x);
 
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0.3, Math.PI * 2 - 0.3);
+    ctx.arc(geometry.cx, geometry.cy, geometry.r, geometry.startAngle, endAngle);
     ctx.stroke();
 
-    const arrowAngle = Math.PI * 2 - 0.3;
-    const ax = cx + Math.cos(arrowAngle) * r;
-    const ay = cy + Math.sin(arrowAngle) * r;
-    drawArrowHead(ctx, ax, ay, Math.PI / 2 + 0.5);
+    drawArrowHead(ctx, geometry.arrowX, geometry.arrowY, arrowAngle);
 
     const label = getTransitionLabel(transition);
     const accent = readCssVar('--color-primary', '#4263eb');
-    ctx.fillStyle = isSelected ? accent : readCssVar('--color-label-text', '#fff');
+    const simulationEdge = readCssVar('--color-simulation-edge', '#ae3ec9');
+    ctx.fillStyle = isActiveTransition
+      ? simulationEdge
+      : isSelected
+        ? accent
+        : readCssVar('--color-label-text', '#fff');
     ctx.font = `12px ${fontSans}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(label, cx, cy - r - 4);
+    ctx.fillText(label, geometry.labelX, geometry.labelY);
   }
 
   function drawArrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
+    const fillColor = ctx.fillStyle;
+    const outlineColor = readCssVar('--color-state-fill', 'rgba(174, 167, 167, 0.08)');
+
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -294,8 +326,52 @@ export function useCanvasRenderer() {
     ctx.lineTo(-ARROW_SIZE, -ARROW_SIZE / 2);
     ctx.lineTo(-ARROW_SIZE, ARROW_SIZE / 2);
     ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.restore();
+  }
+
+  function getArrowTailPoint(x: number, y: number, angle: number) {
+    return {
+      x: x - Math.cos(angle) * ARROW_SIZE,
+      y: y - Math.sin(angle) * ARROW_SIZE,
+    };
+  }
+
+  function getSimulationStateRole(
+    stateId: string,
+    activeTransition: TransitionHighlight | null | undefined,
+  ) {
+    if (!activeTransition) return null;
+    const isSource = activeTransition.sourceStateId === stateId;
+    const isTarget = activeTransition.targetStateId === stateId;
+    if (isSource && isTarget) return 'both';
+    if (isSource) return 'source';
+    if (isTarget) return 'target';
+    return null;
+  }
+
+  function colorWithAlpha(color: string, alpha: number): string {
+    if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
+      const hex =
+        color.length === 4
+          ? color
+              .slice(1)
+              .split('')
+              .map((char) => char + char)
+              .join('')
+          : color.slice(1);
+      const value = Number.parseInt(hex, 16);
+      const r = (value >> 16) & 255;
+      const g = (value >> 8) & 255;
+      const b = value & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    return color;
   }
 
   function getTransitionLabel(t: AnyTransition): string {

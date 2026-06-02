@@ -1,0 +1,2 @@
+Cambiar el enfoque al generar nodo y/o aristas
+boton de guardar en la version desktop
