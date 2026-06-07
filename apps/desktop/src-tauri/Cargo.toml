@@ -1,6 +1,6 @@
 [package]
 name = "jauto"
-version = "0.1.0"
+version = "0.2.0"
 description = "Modern open-source replacement for JFLAP 7.1"
 authors = ["Jauto contributors"]
 license = "MIT"
