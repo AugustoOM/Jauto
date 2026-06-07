@@ -79,6 +79,34 @@ Native desktop support currently includes:
 - PNG export through the native save dialog
 - Native app menu actions bridged into the Vue editor
 
+### Desktop Downloads
+
+Native Windows and macOS installers are published as GitHub Release assets from
+this repository.
+
+To publish a downloadable desktop release:
+
+1. Update the app version in `apps/desktop/src-tauri/tauri.conf.json` and
+   `apps/desktop/src-tauri/Cargo.toml`.
+2. Create and push a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The `Desktop native releases` workflow builds:
+
+- Windows x64 installers on `windows-latest`
+- macOS universal installers for Intel and Apple Silicon on `macos-latest`
+
+The generated `.msi`, `.exe`, `.dmg`, and `.app.tar.gz` files are attached to
+the GitHub Release for that tag. The workflow can also be run manually from
+GitHub Actions with a `release_tag` value.
+
+The macOS installer is currently unsigned. Users may need to approve it manually
+from macOS security settings until Apple Developer ID signing is configured.
+
 ## Project Structure
 
 ```
