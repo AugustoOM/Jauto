@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, type Component } from 'vue';
-import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from 'lucide-vue-next';
+import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from '@lucide/vue';
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 import { saveDocumentKey } from '../injectionKeys';

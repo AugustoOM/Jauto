@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 import type { AutomatonKind } from '@jauto/core';
-import { Workflow, Layers, Cpu, FolderOpen } from 'lucide-vue-next';
+import { Workflow, Layers, Cpu, FolderOpen } from '@lucide/vue';
 import ThemeToggle from './ThemeToggle.vue';
 import logoFull from '../assets/logo.png';
 

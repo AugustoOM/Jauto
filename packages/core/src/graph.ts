@@ -1,4 +1,12 @@
-import type { Automaton, AutomatonState, AnyTransition, AnyAutomaton, AutomatonKind, FATransition, PDATransition, TMTransition } from './types';
+import type {
+  Automaton,
+  AutomatonState,
+  AnyTransition,
+  AnyAutomaton,
+  FATransition,
+  PDATransition,
+  TMTransition,
+} from './types';
 
 export function addState<T extends AnyTransition>(
   automaton: Automaton<T>,

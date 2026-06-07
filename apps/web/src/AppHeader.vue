@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import { Pencil, Save } from 'lucide-vue-next';
+import { Pencil, Save } from '@lucide/vue';
 import { useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';

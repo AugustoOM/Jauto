@@ -12,17 +12,17 @@
   },
   "dependencies": {
     "@jauto/core": "workspace:*",
-    "@jauto/ui": "workspace:*",
     "@jauto/file-io": "workspace:*",
-    "lucide-vue-next": "^1",
-    "vue": "^3",
-    "pinia": "^3",
-    "vue-router": "^4"
+    "@jauto/ui": "workspace:*",
+    "@lucide/vue": "^1.17.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5",
-    "vite": "^6",
-    "typescript": "^5.8",
-    "vue-tsc": "^2"
+    "@vitejs/plugin-vue": "^6.0.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vue-tsc": "^3.3.3"
   }
 }

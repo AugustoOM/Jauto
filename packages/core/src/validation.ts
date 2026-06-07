@@ -1,4 +1,10 @@
-import type { AnyAutomaton, AutomatonKind, AutomatonState, FiniteAutomaton, PushdownAutomaton, TuringMachine } from './types';
+import type {
+  AnyAutomaton,
+  AutomatonState,
+  FiniteAutomaton,
+  PushdownAutomaton,
+  TuringMachine,
+} from './types';
 import { getTransitionsFrom } from './graph';
 
 export interface ValidationDiagnostic {
@@ -136,10 +142,16 @@ export function validate(automaton: AnyAutomaton): ValidationDiagnostic[] {
 
   for (const t of automaton.transitions) {
     if (!automaton.states.some((s) => s.id === t.from)) {
-      diagnostics.push({ level: 'error', message: `Transition references missing source state "${t.from}"` });
+      diagnostics.push({
+        level: 'error',
+        message: `Transition references missing source state "${t.from}"`,
+      });
     }
     if (!automaton.states.some((s) => s.id === t.to)) {
-      diagnostics.push({ level: 'error', message: `Transition references missing target state "${t.to}"` });
+      diagnostics.push({
+        level: 'error',
+        message: `Transition references missing target state "${t.to}"`,
+      });
     }
   }
 

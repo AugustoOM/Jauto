@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, Square, Zap } from 'lucide-vue-next';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Square, Zap } from '@lucide/vue';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 
