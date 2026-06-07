@@ -4,12 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+      - 'Beta'
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'GitHub Release tag to create or update, for example v0.1.0'
+        description: 'GitHub Release tag to create or update, for example v0.2.0'
         required: true
-        default: 'v0.1.0'
+        default: 'v0.2.0'
 
 permissions:
   contents: write

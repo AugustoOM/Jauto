@@ -91,8 +91,8 @@ To publish a downloadable desktop release:
 2. Create and push a version tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 The `Desktop native releases` workflow builds:
