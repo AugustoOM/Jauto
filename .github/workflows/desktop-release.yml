@@ -55,6 +55,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build native desktop app
+        # The renderer imports workspace packages through their dist exports.
+        # pnpm test builds these dependencies through Turbo before packaging.
+        working-directory: .
+        run: |
+          pnpm lint
+          pnpm test
+          pnpm typecheck
+
+      - name: Package native desktop app
         working-directory: apps/desktop
         run: pnpm tauri build ${{ matrix.args }}
 

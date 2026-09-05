@@ -76,8 +76,8 @@ No source or configuration files were changed during the audit. Native installer
 - [ ] Build a conformance suite from official JFLAP files and independently established expected outcomes.
 - [ ] Verify Jauto-created exports in JFLAP, including files with multiple new states.
 - [ ] Add regression cases for the confirmed defects, including empty input, string transitions, epsilon cycles, nondeterminism, malformed XML, and resource exhaustion.
-- [ ] Enable Vue linting and meaningful UI/store/file-service integration tests.
-- [ ] Add pull-request checks for tests, lint, type checking, and builds.
+- [x] Enable Vue linting and meaningful UI/store/file-service integration tests.
+- [x] Add pull-request checks for tests, lint, type checking, and builds.
 
 **Acceptance criteria:** Every advertised feature has an independent compatibility check. Unsupported documents cannot silently become altered editable documents. Tests cover integration behavior as well as isolated engines.
 
@@ -242,5 +242,6 @@ Before calling the automata milestone dependable:
 ## Implementation log
 
 - Compatibility contract: added `docs/COMPATIBILITY.md` with an honest baseline matrix, first-release semantics, unsupported-feature policy and verification requirements. Validated against the audit's official JFLAP references and current implementation. No application behavior changed.
+- Test and CI foundation: enabled Vue linting, added UI/history and file-service tests, retained the official PDA fixture with provenance, replaced obsolete Vitest workspace configuration, and added PR/release checks. Validation: 86 tests passed; lint, type checking and both frontend builds passed; Turbo task graph verified. Full simulator conformance and installed-platform checks remain outstanding.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
