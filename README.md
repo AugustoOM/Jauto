@@ -8,6 +8,8 @@
 
 ## Features (MVP)
 
+Compatibility is under active development. See the [JFLAP 7.1 compatibility contract](docs/COMPATIBILITY.md) for current limitations and the [action plan](ACTION_PLAN.md) for progress.
+
 - **DFA / NFA** — create, edit, and simulate finite automata
 - **PDA** — pushdown automata with stack visualization
 - **Turing Machine** — single-tape Turing machine editor and simulator
