@@ -11,6 +11,7 @@ export interface ValidationDiagnostic {
   readonly level: 'error' | 'warning';
   readonly message: string;
   readonly stateId?: string;
+  readonly transitionId?: string;
 }
 
 export function hasInitialState(automaton: AnyAutomaton): boolean {
@@ -124,35 +125,56 @@ export function hasUnreachableStates(automaton: AnyAutomaton): boolean {
   return automaton.states.some((s) => !reachable.has(s.id));
 }
 
-export function validate(automaton: AnyAutomaton): ValidationDiagnostic[] {
+/** Structural errors prevent safe editing/export; incomplete drafts are allowed. */
+export function validateStructure(automaton: AnyAutomaton): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
+  const stateIds = new Set<string>();
+  for (const state of automaton.states) {
+    if (!state.id || stateIds.has(state.id)) {
+      diagnostics.push({ level: 'error', message: `Duplicate or empty state ID: "${state.id}"`, stateId: state.id });
+    }
+    stateIds.add(state.id);
+    if (!Number.isFinite(state.x) || !Number.isFinite(state.y)) {
+      diagnostics.push({ level: 'error', message: 'State coordinates must be finite numbers', stateId: state.id });
+    }
+  }
+  if (automaton.states.filter((s) => s.isInitial).length > 1) {
+    diagnostics.push({ level: 'error', message: 'Multiple initial states defined' });
+  }
+  const transitionIds = new Set<string>();
+  for (const t of automaton.transitions) {
+    if (!t.id || transitionIds.has(t.id)) {
+      diagnostics.push({ level: 'error', message: `Duplicate or empty transition ID: "${t.id}"`, transitionId: t.id });
+    }
+    transitionIds.add(t.id);
+    for (const [role, id] of [['source', t.from], ['target', t.to]]) {
+      if (!stateIds.has(id!)) {
+        diagnostics.push({ level: 'error', message: `Transition references missing ${role} state "${id}"`, transitionId: t.id });
+      }
+    }
+  }
+  if (automaton.kind === 'turing') {
+    if (!Number.isInteger(automaton.tapes) || automaton.tapes < 1) {
+      diagnostics.push({ level: 'error', message: 'Tape count must be a positive integer' });
+    }
+    for (const t of automaton.transitions) {
+      if (!['L', 'R', 'S'].includes(t.move)) {
+        diagnostics.push({ level: 'error', message: 'TM movement must be L, R or S', transitionId: t.id });
+      }
+    }
+  }
+  return diagnostics;
+}
+
+export function validate(automaton: AnyAutomaton): ValidationDiagnostic[] {
+  const diagnostics = validateStructure(automaton);
 
   if (!hasInitialState(automaton)) {
     diagnostics.push({ level: 'error', message: 'No initial state defined' });
   }
 
-  const initialStates = automaton.states.filter((s) => s.isInitial);
-  if (initialStates.length > 1) {
-    diagnostics.push({ level: 'error', message: 'Multiple initial states defined' });
-  }
-
   if (!automaton.states.some((s) => s.isFinal)) {
     diagnostics.push({ level: 'warning', message: 'No accepting (final) states defined' });
-  }
-
-  for (const t of automaton.transitions) {
-    if (!automaton.states.some((s) => s.id === t.from)) {
-      diagnostics.push({
-        level: 'error',
-        message: `Transition references missing source state "${t.from}"`,
-      });
-    }
-    if (!automaton.states.some((s) => s.id === t.to)) {
-      diagnostics.push({
-        level: 'error',
-        message: `Transition references missing target state "${t.to}"`,
-      });
-    }
   }
 
   if (hasUnreachableStates(automaton)) {

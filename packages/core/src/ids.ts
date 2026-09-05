@@ -1,12 +1,18 @@
 let stateCounter = 0;
 let transitionCounter = 0;
 
-export function generateStateId(): string {
-  return `s${stateCounter++}`;
+export function generateStateId(existing: readonly { id: string }[] = []): string {
+  const used = new Set(existing.map((item) => item.id));
+  let id: string;
+  do { id = `s${stateCounter++}`; } while (used.has(id));
+  return id;
 }
 
-export function generateTransitionId(): string {
-  return `t${transitionCounter++}`;
+export function generateTransitionId(existing: readonly { id: string }[] = []): string {
+  const used = new Set(existing.map((item) => item.id));
+  let id: string;
+  do { id = `t${transitionCounter++}`; } while (used.has(id));
+  return id;
 }
 
 export function resetIdCounters(): void {

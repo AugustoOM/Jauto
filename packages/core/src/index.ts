@@ -35,7 +35,9 @@ export {
   isComplete,
   hasUnreachableStates,
   validate,
+  validateStructure,
 } from './validation';
+export type { ValidationDiagnostic } from './validation';
 
 export { generateStateId, generateTransitionId, createIdGenerator, resetIdCounters } from './ids';
 export type { IdGenerator } from './ids';

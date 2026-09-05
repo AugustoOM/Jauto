@@ -37,16 +37,16 @@ export interface TMTransition {
 
 export type AnyTransition = FATransition | PDATransition | TMTransition;
 
-export interface Automaton<T extends AnyTransition> {
-  readonly kind: AutomatonKind;
+export interface Automaton<T extends AnyTransition, K extends AutomatonKind = AutomatonKind> {
+  readonly kind: K;
   readonly states: readonly AutomatonState[];
   readonly transitions: readonly T[];
   readonly meta?: { readonly comment?: string };
 }
 
-export type FiniteAutomaton = Automaton<FATransition>;
-export type PushdownAutomaton = Automaton<PDATransition>;
-export type TuringMachine = Automaton<TMTransition> & { readonly tapes: number };
+export type FiniteAutomaton = Automaton<FATransition, 'fa'>;
+export type PushdownAutomaton = Automaton<PDATransition, 'pda'>;
+export type TuringMachine = Automaton<TMTransition, 'turing'> & { readonly tapes: number };
 
 export type AnyAutomaton = FiniteAutomaton | PushdownAutomaton | TuringMachine;
 
@@ -58,10 +58,10 @@ export function createEmptyAutomaton(kind: AutomatonKind): AnyAutomaton {
   const base = { states: [], transitions: [], meta: {} };
   switch (kind) {
     case 'fa':
-      return { ...base, kind: 'fa' } as FiniteAutomaton;
+      return { ...base, kind: 'fa' };
     case 'pda':
-      return { ...base, kind: 'pda' } as PushdownAutomaton;
+      return { ...base, kind: 'pda' };
     case 'turing':
-      return { ...base, kind: 'turing', tapes: 1 } as TuringMachine;
+      return { ...base, kind: 'turing', tapes: 1 };
   }
 }

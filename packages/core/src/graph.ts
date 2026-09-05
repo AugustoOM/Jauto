@@ -12,6 +12,9 @@ export function addState<T extends AnyTransition>(
   automaton: Automaton<T>,
   state: AutomatonState,
 ): Automaton<T> {
+  if (automaton.states.some((s) => s.id === state.id)) {
+    throw new Error(`State ID already exists: ${state.id}`);
+  }
   return { ...automaton, states: [...automaton.states, state] };
 }
 
@@ -41,6 +44,9 @@ export function addTransition<T extends AnyTransition>(
   automaton: Automaton<T>,
   transition: T,
 ): Automaton<T> {
+  if (automaton.transitions.some((t) => t.id === transition.id)) {
+    throw new Error(`Transition ID already exists: ${transition.id}`);
+  }
   return { ...automaton, transitions: [...automaton.transitions, transition] };
 }
 

@@ -52,7 +52,7 @@ export function useInteractionManager(
   function addStateAt(x: number, y: number) {
     const name = nextStateName();
     const newState: AutomatonState = {
-      id: generateStateId(),
+      id: generateStateId(docStore.automaton.states),
       name,
       x,
       y,
@@ -191,7 +191,7 @@ export function useInteractionManager(
 
       if (targetState) {
         const kind = docStore.automaton.kind;
-        const id = generateTransitionId();
+        const id = generateTransitionId(docStore.automaton.transitions);
         let transition;
         if (kind === 'pda') {
           transition = { id, from: transitionSourceId.value, to: targetState.id, read: '', pop: '', push: '' };

@@ -86,8 +86,8 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P1  
 **Dependencies:** Compatibility rules and initial regression cases from step 1
 
-- [ ] Make automaton types a discriminated union with machine-specific transition schemas.
-- [ ] Allocate internal IDs without collisions and enforce graph uniqueness.
+- [x] Make automaton types a discriminated union with machine-specific transition schemas.
+- [x] Allocate internal IDs without collisions and enforce graph uniqueness.
 - [ ] Map internal IDs to unique integer IDs on export, updating all transition endpoints consistently.
 - [ ] Use a shared XML writer or escaping utility for every text field and attribute; reject characters forbidden by XML.
 - [ ] Preserve semantic whitespace and trim only structural fields where appropriate.
@@ -243,5 +243,6 @@ Before calling the automata milestone dependable:
 
 - Compatibility contract: added `docs/COMPATIBILITY.md` with an honest baseline matrix, first-release semantics, unsupported-feature policy and verification requirements. Validated against the audit's official JFLAP references and current implementation. No application behavior changed.
 - Test and CI foundation: enabled Vue linting, added UI/history and file-service tests, retained the official PDA fixture with provenance, replaced obsolete Vitest workspace configuration, and added PR/release checks. Validation: 86 tests passed; lint, type checking and both frontend builds passed; Turbo task graph verified. Full simulator conformance and installed-platform checks remain outstanding.
+- Document identity: made machine kinds discriminated, allocated IDs against the open document, rejected duplicate additions and introduced structural diagnostics for damaged graphs. Validation: 40 core tests passed; all workspace type checks and lint passed. Structural diagnostics will be connected to file opening/export in the next feature.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
