@@ -1,6 +1,7 @@
 import type { FiniteAutomaton } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { DFAConfig } from './configs';
+import { validateRunBudget } from './run-budget';
 
 export function createDFARunner(
   automaton: FiniteAutomaton,
@@ -50,6 +51,7 @@ export function createDFARunner(
   }
 
   function run(maxSteps = 10000): RunResult<DFAConfig> {
+    validateRunBudget(maxSteps);
     const steps: StepResult<DFAConfig>[] = [];
     while (steps.length < maxSteps) {
       const result = step();
@@ -57,8 +59,8 @@ export function createDFARunner(
       if (result.status !== 'running') break;
     }
     const status = getStatus();
-    const outcome = status === 'running' ? 'step-limit' : status;
-    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: config };
+    const outcome = status === 'running' ? 'incomplete' : status;
+    return { accepted: outcome === 'accepted', outcome, incompleteReason: outcome === 'incomplete' ? 'step-limit' : undefined, steps, finalConfig: config };
   }
 
   function reset() {

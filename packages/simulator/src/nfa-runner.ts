@@ -1,6 +1,7 @@
 import type { FiniteAutomaton } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { NFAConfig } from './configs';
+import { validateRunBudget } from './run-budget';
 
 interface Branch {
   state: string;
@@ -99,6 +100,7 @@ export function createNFARunner(
   }
 
   function run(maxSteps = 10000): RunResult<NFAConfig> {
+    validateRunBudget(maxSteps);
     const steps: StepResult<NFAConfig>[] = [];
     while (steps.length < maxSteps) {
       const result = step();
@@ -106,8 +108,8 @@ export function createNFARunner(
       if (result.status !== 'running') break;
     }
     const status = getStatus();
-    const outcome = status === 'running' ? 'step-limit' : status;
-    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: toPublicConfig() };
+    const outcome = status === 'running' ? 'incomplete' : status;
+    return { accepted: outcome === 'accepted', outcome, incompleteReason: outcome === 'incomplete' ? 'step-limit' : undefined, steps, finalConfig: toPublicConfig() };
   }
 
   function reset() {

@@ -1,6 +1,7 @@
 import type { TuringMachine } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { TMConfig } from './configs';
+import { validateRunBudget } from './run-budget';
 
 const BLANK = '\u25A1';
 
@@ -94,6 +95,7 @@ export function createTMRunner(
   }
 
   function run(maxSteps = 10000): RunResult<TMConfig> {
+    validateRunBudget(maxSteps);
     const steps: StepResult<TMConfig>[] = [];
     while (steps.length < maxSteps) {
       const result = step();
@@ -101,8 +103,8 @@ export function createTMRunner(
       if (result.status !== 'running') break;
     }
     const status = getStatus();
-    const outcome = status === 'running' ? 'step-limit' : status;
-    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: getConfig() };
+    const outcome = status === 'running' ? 'incomplete' : status;
+    return { accepted: outcome === 'accepted', outcome, incompleteReason: outcome === 'incomplete' ? 'step-limit' : undefined, steps, finalConfig: getConfig() };
   }
 
   function reset() {

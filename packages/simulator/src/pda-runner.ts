@@ -1,6 +1,7 @@
 import type { PushdownAutomaton } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { PDAConfig } from './configs';
+import { validateRunBudget } from './run-budget';
 
 interface PDAConfiguration {
   state: string;
@@ -24,6 +25,11 @@ export function createPDARunner(
   ];
   let stepIndex = 0;
   let accepted = false;
+  let configurationLimitReached = false;
+
+  function configurationKey(config: PDAConfiguration): string {
+    return `${config.state}\u0000${config.inputIndex}\u0000${config.stack.join('\u0001')}`;
+  }
 
   function toPublicConfig(): PDAConfig {
     const first = configs[0];
@@ -58,6 +64,7 @@ export function createPDARunner(
 
   function getStatus(): SimulationStatus {
     if (accepted) return 'accepted';
+    if (configurationLimitReached) return 'incomplete';
     if (configs.length === 0) return 'rejected';
 
     for (const c of configs) {
@@ -77,7 +84,7 @@ export function createPDARunner(
       return { config: toPublicConfig(), status: currentStatus, stepIndex };
     }
 
-    const nextConfigs: PDAConfiguration[] = [];
+    const nextConfigs = new Map<string, PDAConfiguration>();
 
     for (const c of configs) {
       for (const t of automaton.transitions) {
@@ -96,17 +103,22 @@ export function createPDARunner(
           }
 
           const consumed = t.read.length;
-          nextConfigs.push({
+          const next = {
             state: t.to,
             remaining: c.remaining.slice(consumed),
             inputIndex: c.inputIndex + consumed,
             stack: newStack,
-          });
+          };
+          nextConfigs.set(configurationKey(next), next);
+          if (nextConfigs.size > MAX_CONFIGS) {
+            configurationLimitReached = true;
+            return { config: toPublicConfig(), status: 'incomplete', stepIndex };
+          }
         }
       }
     }
 
-    configs = nextConfigs.slice(0, MAX_CONFIGS);
+    configs = [...nextConfigs.values()];
     stepIndex++;
 
     for (const c of configs) {
@@ -123,6 +135,7 @@ export function createPDARunner(
   }
 
   function run(maxSteps = 10000): RunResult<PDAConfig> {
+    validateRunBudget(maxSteps);
     const steps: StepResult<PDAConfig>[] = [];
     while (steps.length < maxSteps) {
       const result = step();
@@ -130,21 +143,25 @@ export function createPDARunner(
       if (result.status !== 'running') break;
     }
     const status = getStatus();
-    const outcome = status === 'running' ? 'step-limit' : status;
-    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: toPublicConfig() };
+    const outcome = status === 'running' ? 'incomplete' : status;
+    const incompleteReason = outcome === 'incomplete'
+      ? configurationLimitReached ? 'configuration-limit' : 'step-limit'
+      : undefined;
+    return { accepted: outcome === 'accepted', outcome, incompleteReason, steps, finalConfig: toPublicConfig() };
   }
 
   function reset() {
     configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: ['Z'] }];
     stepIndex = 0;
     accepted = false;
+    configurationLimitReached = false;
   }
 
   return {
     step,
     run,
     reset,
-    get isHalted() { return configs.length === 0 || accepted || getStatus() !== 'running'; },
+    get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return accepted || getStatus() === 'accepted'; },
     get currentConfig() { return toPublicConfig(); },
   };

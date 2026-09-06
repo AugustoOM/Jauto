@@ -125,12 +125,12 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Connect NFA execution and epsilon closure to the editor.
 - [x] Support the declared FA/PDA string-transition semantics, including PDA stack-string matching.
 - [x] Initialize PDA stacks consistently with JFLAP and correct initial-configuration acceptance.
-- [ ] Implement fair nondeterministic exploration and configuration deduplication where appropriate.
+- [x] Implement fair nondeterministic exploration and configuration deduplication where appropriate.
 - [ ] Support nondeterministic TMs or explicitly prevent unsupported execution until implemented.
 - [ ] Specify and implement the targeted TM acceptance policies and shortcut syntax.
-- [ ] Replace silent branch truncation with explicit resource-limit outcomes.
+- [x] Replace silent branch truncation with explicit resource-limit outcomes.
 - [ ] Standardize accepted, rejected, invalid, canceled, and incomplete outcomes across runners.
-- [ ] Validate execution budgets, including zero/negative values, and make terminal steps idempotent.
+- [x] Validate execution budgets, including zero/negative values, and make terminal steps idempotent.
 - [ ] Repair determinism checks and remove placeholder completeness results.
 - [ ] Separate input, stack, and tape alphabet helpers.
 - [ ] Update existing tests that encode incompatible PDA initialization assumptions.
@@ -255,5 +255,6 @@ Before calling the automata milestone dependable:
 - File identity and save behavior: carried desktop paths through open/save, made Save overwrite the current path while Save As opens the chooser, adopted the filename actually selected, retained dirty state on cancellation/failure, and surfaced save/export errors to users. Validation: 4 file-service and 20 UI tests passed; Rust check/format, workspace type checks and lint passed.
 - Exact structural undo: removal commands now capture and restore original state and transition indices, including connected edges, while revision history returns to the saved revision. Validation: 43 core tests passed; core type checks and lint passed.
 - Inspector transaction boundary: registered the active inspector draft with the document store and flush it before selection changes, save, New/Open, simulation start, undo, and redo. Validation: 21 UI tests passed; workspace type checks and lint passed.
+- Fair bounded exploration: deduplicated NFA/PDA configurations during breadth-first stepping, replaced PDA's silent 1,000-branch truncation with an `incomplete` result and `configuration-limit` reason, validated run budgets, and made terminal stepping idempotent. Validation: 43 simulator tests passed; simulator type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.

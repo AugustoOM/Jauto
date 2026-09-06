@@ -32,7 +32,7 @@ describe('bounded run outcomes', () => {
     ['TM', () => createTMRunner(tm, 'a')],
   ])('%s reports a zero-step limit without crashing', (_name, createRunner) => {
     const result = createRunner().run(0);
-    expect(result).toMatchObject({ accepted: false, outcome: 'step-limit', steps: [] });
+    expect(result).toMatchObject({ accepted: false, outcome: 'incomplete', incompleteReason: 'step-limit', steps: [] });
     expect(result.finalConfig).toBeDefined();
   });
 
@@ -40,5 +40,54 @@ describe('bounded run outcomes', () => {
     const rejected = createDFARunner({ ...dfa, transitions: [] }, 'a').run();
     expect(rejected.outcome).toBe('rejected');
     expect(rejected.steps).toHaveLength(1);
+  });
+
+  it.each([
+    ['negative', -1],
+    ['fractional', 1.5],
+    ['infinite', Number.POSITIVE_INFINITY],
+  ])('rejects a %s execution budget', (_name, budget) => {
+    expect(() => createDFARunner(dfa, 'a').run(budget)).toThrow(RangeError);
+  });
+
+  it('reports PDA configuration exhaustion without treating it as rejection', () => {
+    const branchStates = Array.from({ length: 1001 }, (_, index) => ({
+      id: `q${index + 1}`,
+      name: `q${index + 1}`,
+      x: index,
+      y: 0,
+      isInitial: false,
+      isFinal: false,
+    }));
+    const branching: PushdownAutomaton = {
+      kind: 'pda',
+      states: [states[0], ...branchStates],
+      transitions: branchStates.map((state, index) => ({
+        id: `t${index}`,
+        from: 'q0',
+        to: state.id,
+        read: 'a',
+        pop: '',
+        push: String(index),
+      })),
+    };
+    expect(createPDARunner(branching, 'a').run()).toMatchObject({
+      accepted: false,
+      outcome: 'incomplete',
+      incompleteReason: 'configuration-limit',
+    });
+  });
+
+  it.each([
+    ['DFA', () => createDFARunner(dfa, 'a')],
+    ['NFA', () => createNFARunner(nfa, 'a')],
+    ['PDA', () => createPDARunner(pda, 'a')],
+    ['TM', () => createTMRunner(tm, 'a')],
+  ])('%s terminal steps are idempotent', (_name, createRunner) => {
+    const runner = createRunner();
+    runner.run();
+    const first = runner.step();
+    const second = runner.step();
+    expect(second).toEqual(first);
   });
 });
