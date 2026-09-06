@@ -158,18 +158,18 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P2; optimize based on measurements  
 **Dependencies:** Coordinate with document transactions and trace UI
 
-- [ ] Use Pointer Events and pointer capture for dragging and transition creation.
-- [ ] Handle pointer cancellation, lost capture, Escape, blur, and document switches.
-- [ ] Preserve drag offsets and use one history transaction per gesture.
-- [ ] Add visible Fit/Zoom controls and fit imported diagrams into view.
-- [ ] Observe container resizing and support high-density display rendering.
-- [ ] Provide keyboard-operable state/transition editing and a semantic alternative to the canvas.
-- [ ] Add associated labels, toolbar/menu semantics, visible focus, and accessible status announcements.
-- [ ] Make the inspector collapsible and controls usable in narrow windows and at enlarged text/zoom settings.
-- [ ] Export complete diagrams with intentional bounds, scale, background, and editing-decoration options.
-- [ ] Benchmark representative small and large diagrams and long simulations.
-- [ ] Address idle redraws, repeated graph scans, geometry recalculation, and trace retention based on results.
-- [ ] Introduce background execution and viewport culling where justified by measurements.
+- [x] Use Pointer Events and pointer capture for dragging and transition creation.
+- [x] Handle pointer cancellation, lost capture, Escape, blur, and document switches.
+- [x] Preserve drag offsets and use one history transaction per gesture.
+- [x] Add visible Fit/Zoom controls and fit imported diagrams into view.
+- [x] Observe container resizing and support high-density display rendering.
+- [x] Provide keyboard-operable state/transition editing and a semantic alternative to the canvas.
+- [x] Add associated labels, toolbar/menu semantics, visible focus, and accessible status announcements.
+- [x] Make the inspector collapsible and controls usable in narrow windows and at enlarged text/zoom settings.
+- [x] Export complete diagrams with intentional bounds, scale, background, and editing-decoration options.
+- [x] Benchmark representative small and large diagrams and long simulations.
+- [x] Address idle redraws, repeated graph scans, geometry recalculation, and trace retention based on results.
+- [x] Introduce background execution and viewport culling where justified by measurements.
 
 **Acceptance criteria:** Diagrams remain discoverable and editable across supported input methods, window sizes, and agreed performance benchmarks. Exports include the intended complete diagram.
 
@@ -258,5 +258,9 @@ Before calling the automata milestone dependable:
 - Fair bounded exploration: deduplicated NFA/PDA configurations during breadth-first stepping, replaced PDA's silent 1,000-branch truncation with an `incomplete` result and `configuration-limit` reason, validated run budgets, and made terminal stepping idempotent. Validation: 43 simulator tests passed; simulator type checks and lint passed.
 - Execution profiles and outcomes: added terminal cancellation across runners, surfaced invalid-machine errors in the editor, implemented configurable TM final-state/halting acceptance, and reject nondeterministic TMs, disabled stay moves, and JFLAP shortcut syntax before execution when unsupported. Validation: 49 simulator and 21 UI tests passed; workspace type checks and lint passed.
 - Machine analysis: added separate input, stack, and tape alphabet helpers; made PDA determinism account for overlapping read/pop prefixes and equivalent blank spellings; implemented symbol-level FA, conservative PDA, and literal-TM completeness checks; and updated legacy PDA tests to start with JFLAP's `Z`. Validation: 51 core and 49 simulator tests passed; full workspace tests, type checks, lint, Rust format, and Rust check passed.
+- Educational simulation traces: runners now emit exact transition IDs, complete active configurations, stable branch identities, and accepting witnesses. Replay includes the initial snapshot and keeps its cursor independent from the execution head; semantic edits invalidate execution while layout edits remain safe. The controls expose input progress, PDA stacks, TM tape/head positions, branches, witnesses, and batch results. Validation: 52 simulator and 24 UI tests passed; simulator/UI builds passed.
+- Pointer and viewport interaction: canvas gestures now use Pointer Events and capture, preserve drag offsets, commit one undo command, and restore previews on cancellation, Escape, blur, capture loss, and document changes. Visible Fit/Zoom controls, automatic import fitting, `ResizeObserver`, high-density rendering, and change-driven drawing were added. Validation: 27 UI tests and UI type checking passed.
+- Accessible editor and complete export: added a native-control semantic diagram editor, associated labels and status announcements, toolbar semantics and focus indicators, a collapsible inspector, narrow-window layouts, and full-bounds offscreen PNG rendering with explicit scale, background, grid, and editing-decoration options. Web and desktop use the shared exporter. Validation: 29 UI tests and the complete seven-package build, including MSI and NSIS installers, passed.
+- Measured performance: added a repeatable 500-state/4,000-transition and 10,000-step benchmark, indexed runner lookups and render graph data, cached per-frame styles, culled offscreen elements, discarded batch trace snapshots, and capped interactive replay at 10,000 steps. The measured render pass fell from 129.20 ms to 23.82 ms and the batch run from 481 ms to 74.13 ms; worker coordination was not justified at this workload. Validation: benchmark, 52 simulator tests, 29 UI tests, all workspace type checks, and all lint tasks passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
