@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import type { SimulationRunner, StepResult, SimulationStatus } from '@jauto/simulator';
-import { createDFARunner, createPDARunner, createTMRunner } from '@jauto/simulator';
-import type { AnyAutomaton, AnyTransition, FiniteAutomaton, PushdownAutomaton, TuringMachine } from '@jauto/core';
+import { createDFARunner, createNFARunner, createPDARunner, createTMRunner } from '@jauto/simulator';
+import { isDeterministic } from '@jauto/core';
+import type { AnyAutomaton, AnyTransition, PushdownAutomaton, TuringMachine } from '@jauto/core';
 
 export interface TransitionHighlight {
   transitionId: string;
@@ -31,7 +32,9 @@ export const useSimulationStore = defineStore('simulation', () => {
   function createRunnerFor(automaton: AnyAutomaton, inputStr: string) {
     switch (automaton.kind) {
       case 'fa':
-        return createDFARunner(automaton as FiniteAutomaton, inputStr);
+        return isDeterministic(automaton)
+          ? createDFARunner(automaton, inputStr)
+          : createNFARunner(automaton, inputStr);
       case 'pda':
         return createPDARunner(automaton as PushdownAutomaton, inputStr);
       case 'turing':
@@ -78,7 +81,7 @@ export const useSimulationStore = defineStore('simulation', () => {
       status.value = 'rejected';
       return;
     }
-    status.value = 'running';
+    status.value = runner.isAccepted ? 'accepted' : runner.isHalted ? 'rejected' : 'running';
     stepIndex.value = 0;
     traceSteps.value = [];
     transitionHighlights.value = [];

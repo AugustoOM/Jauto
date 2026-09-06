@@ -122,7 +122,7 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P1  
 **Dependencies:** Compatibility semantics from step 1; coordinate model changes with step 2
 
-- [ ] Connect NFA execution and epsilon closure to the editor.
+- [x] Connect NFA execution and epsilon closure to the editor.
 - [ ] Support the declared FA/PDA string-transition semantics, including PDA stack-string matching.
 - [ ] Initialize PDA stacks consistently with JFLAP and correct initial-configuration acceptance.
 - [ ] Implement fair nondeterministic exploration and configuration deduplication where appropriate.
@@ -246,5 +246,6 @@ Before calling the automata milestone dependable:
 - Document identity: made machine kinds discriminated, allocated IDs against the open document, rejected duplicate additions and introduced structural diagnostics for damaged graphs. Validation: 40 core tests passed; all workspace type checks and lint passed. Structural diagnostics will be connected to file opening/export in the next feature.
 - Safe JFF exchange: added strict XML/document validation, loss-preventing rejection for unsupported constructs, numeric state-ID mapping, semantic XML entity/whitespace preservation, notes and transition control-point round trips, and visible import notices. Validation: 39 JFF tests and 3 UI tests passed; workspace type checks and lint passed. Independent XML checks cover generated IDs and references. Reopening generated files in the JFLAP application remains an external conformance gate.
 - Keyboard safety: centralized editable-target, default-prevention and IME-composition guards for canvas commands and application undo/redo shortcuts. Validation: 8 UI tests passed; workspace type checks and lint passed.
+- NFA editor execution: routed nondeterministic finite automata to the NFA runner, exposed epsilon-closure branch states in the canvas highlights, and derived the initial status from the runner so empty-input acceptance is immediate. Validation: 11 UI tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
