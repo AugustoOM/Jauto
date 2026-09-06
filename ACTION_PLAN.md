@@ -142,14 +142,14 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P2  
 **Dependencies:** Correct engine behavior and result contracts from step 4
 
-- [ ] Emit actual transition IDs, complete configurations, branch identities, and accepting paths from runners.
-- [ ] Include the initial configuration in traces and replay complete snapshots directly.
-- [ ] Separate the replay cursor from the execution head.
-- [ ] Restart or invalidate simulations after semantic edits; define behavior for layout-only edits.
-- [ ] Show consumed/remaining input, PDA stack, TM tape/head, and active configurations.
-- [ ] Show branch selection and accepting witnesses for nondeterministic runs.
+- [x] Emit actual transition IDs, complete configurations, branch identities, and accepting paths from runners.
+- [x] Include the initial configuration in traces and replay complete snapshots directly.
+- [x] Separate the replay cursor from the execution head.
+- [x] Restart or invalidate simulations after semantic edits; define behavior for layout-only edits.
+- [x] Show consumed/remaining input, PDA stack, TM tape/head, and active configurations.
+- [x] Show branch selection and accepting witnesses for nondeterministic runs.
 - [x] Expose meaningful execution limits and clear incomplete/canceled statuses.
-- [ ] Add batch input testing after individual simulation and replay are dependable.
+- [x] Add batch input testing after individual simulation and replay are dependable.
 
 **Acceptance criteria:** Every displayed step, highlight, configuration, and status describes the same execution point. Users can inspect why a word was accepted or rejected.
 
