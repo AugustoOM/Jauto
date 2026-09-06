@@ -204,7 +204,7 @@ const transitionFields = computed(() => {
 </script>
 
 <template>
-  <aside class="inspector">
+  <aside class="inspector" aria-label="Properties inspector">
     <div v-if="selectedState && stateDraft" class="inspector__section">
       <h3 class="inspector__title">State</h3>
       <label class="inspector__field">

@@ -39,8 +39,8 @@ function selectTool(tool: EditorTool) {
 </script>
 
 <template>
-  <div class="toolbar">
-    <div class="toolbar__tools">
+  <div class="toolbar" role="toolbar" aria-label="Automaton editor tools">
+    <div class="toolbar__tools" role="group" aria-label="Editing tools">
       <button
         v-for="tool in tools"
         :key="tool.id"
@@ -50,6 +50,7 @@ function selectTool(tool: EditorTool) {
           'toolbar__btn--modifier': modifierTool === tool.id,
         }"
         :title="`${tool.label} (${tool.shortcut})`"
+        :aria-pressed="docStore.activeTool === tool.id"
         @click="selectTool(tool.id)"
       >
         <component :is="tool.icon" :size="14" class="toolbar__icon" />
@@ -101,6 +102,15 @@ function selectTool(tool: EditorTool) {
   padding: 6px 12px;
   background: var(--color-bg-tertiary);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.toolbar__btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+@media (max-width: 620px) {
+  .toolbar { align-items: stretch; overflow-x: auto; }
+  .toolbar__tools, .toolbar__actions { flex-wrap: wrap; }
+  .toolbar__label { font-size: 11px; }
 }
 
 .toolbar__tools,
