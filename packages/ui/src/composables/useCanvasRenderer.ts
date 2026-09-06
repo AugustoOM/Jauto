@@ -24,6 +24,8 @@ export interface RenderOptions {
   selected: SelectedElement;
   highlightedStates?: ReadonlySet<string>;
   activeTransitions?: readonly TransitionHighlight[];
+  background?: string | null;
+  showGrid?: boolean;
 }
 
 export function useCanvasRenderer() {
@@ -36,15 +38,17 @@ export function useCanvasRenderer() {
   ) {
     const { offsetX, offsetY, scale, selected, highlightedStates, activeTransitions = [] } = options;
 
-    const canvasBg = readCssVar('--color-canvas-bg', '#111111');
+    const canvasBg = options.background === undefined ? readCssVar('--color-canvas-bg', '#111111') : options.background;
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
     const fontSans = readCssVar('--font-family', 'DM Sans, system-ui, sans-serif');
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = canvasBg;
-    ctx.fillRect(0, 0, width, height);
+    if (canvasBg !== null) {
+      ctx.fillStyle = canvasBg;
+      ctx.fillRect(0, 0, width, height);
+    }
 
-    drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
+    if (options.showGrid !== false) drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
 
     ctx.save();
     ctx.translate(offsetX, offsetY);

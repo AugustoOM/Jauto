@@ -2,6 +2,7 @@
 import { nextTick, ref } from 'vue';
 import {
   ArrowLeft,
+  exportDiagramPng,
   Pencil,
   Save,
   ThemeToggle,
@@ -120,17 +121,13 @@ async function onSaveClick() {
 
 async function exportPNG() {
   closeMenu();
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  canvas.toBlob(async (blob) => {
-    try {
-      if (!blob) throw new Error('The canvas could not be encoded as PNG');
-      const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-      await fileService.exportImage(blob, name);
-    } catch (err) {
-      window.alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  });
+  try {
+    const blob = await exportDiagramPng(docStore.automaton, { scale: 2, showGrid: false });
+    const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
+    await fileService.exportImage(blob, name);
+  } catch (err) {
+    window.alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 function startRename() {

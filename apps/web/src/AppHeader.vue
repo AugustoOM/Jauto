@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { Pencil, Save } from '@lucide/vue';
-import { runProtectedDocumentAction, useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
+import { exportDiagramPng, runProtectedDocumentAction, useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
 
@@ -106,18 +106,14 @@ async function onSaveClick() {
 
 async function exportPNG() {
   closeMenu();
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  canvas.toBlob(async (blob) => {
-    try {
-      if (!blob) throw new Error('The canvas could not be encoded as PNG');
-      const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-      const exported = await fileService.exportImage(blob, name);
-      if (!exported) throw new Error('The download could not be started');
-    } catch (err) {
-      alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  });
+  try {
+    const blob = await exportDiagramPng(docStore.automaton, { scale: 2, showGrid: false });
+    const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
+    const exported = await fileService.exportImage(blob, name);
+    if (!exported) throw new Error('The download could not be started');
+  } catch (err) {
+    alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 function startRename() {
