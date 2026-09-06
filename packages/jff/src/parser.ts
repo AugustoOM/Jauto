@@ -1,11 +1,12 @@
-import type { AnyAutomaton, AutomatonKind, FiniteAutomaton, PushdownAutomaton, TuringMachine } from '@jauto/core';
-import { XMLParser } from 'fast-xml-parser';
-import { TAG } from './constants';
+import type { AnyAutomaton } from '@jauto/core';
+import { validateStructure } from '@jauto/core';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { JFFParseError, JFFValidationWarning } from './errors';
 import { parseStates } from './parsers/states';
 import { parseFATransitions } from './parsers/fa';
 import { parsePDATransitions } from './parsers/pda';
 import { parseTMTransitions } from './parsers/tm';
+import { checkKeys, xmlElements, xmlNode, xmlNumber, xmlText, xmlEntityDecoder } from './xml';
 
 export interface ParseResult {
   automaton: AnyAutomaton;
@@ -14,64 +15,55 @@ export interface ParseResult {
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
-  allowBooleanAttributes: true,
   parseTagValue: false,
-  trimValues: true,
-  isArray: (name) => name === TAG.STATE || name === TAG.TRANSITION,
+  parseAttributeValue: false,
+  trimValues: false,
+  entityDecoder: xmlEntityDecoder,
+  isArray: (name) => ['state', 'transition', 'note'].includes(name),
 });
 
 export function parseJFF(xml: string): ParseResult {
-  const warnings: JFFValidationWarning[] = [];
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = xmlParser.parse(xml) as Record<string, unknown>;
-  } catch (e) {
-    throw new JFFParseError(`Invalid XML: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
-  const structure = parsed[TAG.STRUCTURE] as Record<string, unknown> | undefined;
-  if (!structure) {
-    throw new JFFParseError('Missing <structure> root element');
-  }
-
-  const typeStr = String(structure[TAG.TYPE] ?? '').trim();
-  if (!typeStr) {
-    throw new JFFParseError('Missing <type> element');
-  }
-
-  const kind = typeStr as AutomatonKind;
+  if (xml.length > 5_000_000) throw new JFFParseError('Document exceeds the 5 MB import limit');
+  if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new JFFParseError('DTD and custom XML entities are not supported');
+  const valid = XMLValidator.validate(xml);
+  if (valid !== true) throw new JFFParseError(`Invalid XML: ${valid.err.msg}`);
+  const parsed = xmlNode(xmlParser.parse(xml), 'document');
+  checkKeys(parsed, ['?xml', 'structure'], 'document');
+  if (!('structure' in parsed)) throw new JFFParseError('Missing <structure> root element');
+  const structure = xmlNode(parsed.structure, 'structure');
+  const kind = xmlText(structure.type, 'type').trim();
+  if (!kind) throw new JFFParseError('Missing <type> element');
   if (kind !== 'fa' && kind !== 'pda' && kind !== 'turing') {
-    throw new JFFParseError(`Unsupported automaton type: "${typeStr}"`);
+    throw new JFFParseError(`Unsupported automaton type: "${kind}"`);
   }
-
-  const automatonNode = (structure[TAG.AUTOMATON] ?? structure) as Record<string, unknown>;
-  const states = parseStates(automatonNode);
-
-  if (states.filter((s) => s.isInitial).length === 0) {
-    warnings.push(new JFFValidationWarning('No initial state found'));
+  checkKeys(structure, ['type', 'tapes', 'automaton', 'state', 'transition', 'note'], 'structure');
+  if ('automaton' in structure && ['state', 'transition', 'note'].some((key) => key in structure)) {
+    throw new JFFParseError('Mixed nested and legacy automaton structures are not supported');
   }
-
+  const node = 'automaton' in structure ? xmlNode(structure.automaton, 'automaton') : structure;
+  checkKeys(node, node === structure ? ['type', 'tapes', 'state', 'transition', 'note'] : ['tapes', 'state', 'transition', 'note'], 'automaton');
+  if (kind !== 'turing' && ('tapes' in structure || 'tapes' in node)) {
+    throw new JFFParseError('Tape declarations are only supported for Turing machines');
+  }
+  const tapes = xmlNumber(structure.tapes ?? node.tapes, 'tapes', 1);
+  if (tapes !== 1 || xmlNumber(node.tapes, 'tapes', 1) !== 1) {
+    throw new JFFParseError('Only single-tape documents are currently supported');
+  }
+  const states = parseStates(node);
+  const notes = xmlElements(node.note, 'note').map((note) => {
+    checkKeys(note, ['text', 'x', 'y'], 'note');
+    return { text: xmlText(note.text, 'text'), x: xmlNumber(note.x, 'x'), y: xmlNumber(note.y, 'y') };
+  });
+  const base = { states, ...(notes.length ? { meta: { notes } } : {}) };
+  let automaton: AnyAutomaton;
   switch (kind) {
-    case 'fa': {
-      const transitions = parseFATransitions(automatonNode);
-      const automaton: FiniteAutomaton = { kind: 'fa', states, transitions };
-      return { automaton, warnings };
-    }
-    case 'pda': {
-      const transitions = parsePDATransitions(automatonNode);
-      const automaton: PushdownAutomaton = { kind: 'pda', states, transitions };
-      return { automaton, warnings };
-    }
-    case 'turing': {
-      const transitions = parseTMTransitions(automatonNode);
-      const tapesRaw = structure[TAG.TAPES] ?? automatonNode[TAG.TAPES];
-      const tapes = tapesRaw ? parseInt(String(tapesRaw), 10) : 1;
-      if (tapes > 1) {
-        warnings.push(new JFFValidationWarning(`Multi-tape TM not supported. Only the first tape's transitions will be used.`));
-      }
-      const automaton: TuringMachine = { kind: 'turing', states, transitions, tapes };
-      return { automaton, warnings };
-    }
+    case 'fa': automaton = { ...base, kind, transitions: parseFATransitions(node) }; break;
+    case 'pda': automaton = { ...base, kind, transitions: parsePDATransitions(node) }; break;
+    case 'turing': automaton = { ...base, kind, tapes, transitions: parseTMTransitions(node) }; break;
   }
+  const errors = validateStructure(automaton);
+  if (errors.length) throw new JFFParseError(errors.map((error) => error.message).join('; '));
+  const warnings: JFFValidationWarning[] = [];
+  if (!states.some((state) => state.isInitial)) warnings.push(new JFFValidationWarning('No initial state found; set one before simulation'));
+  return { automaton, warnings };
 }

@@ -22,6 +22,7 @@ export const useDocumentStore = defineStore('document', () => {
   const automaton = ref<AnyAutomaton>(createEmptyAutomaton('fa'));
   const fileName = ref<string | null>(null);
   const isDirty = ref(false);
+  const importWarnings = ref<readonly { message: string }[]>([]);
   const selectedElement = ref<SelectedElement>(null);
   const inspectorFocusTarget = ref<InspectorFocusTarget | null>(null);
   const activeTool = ref<EditorTool>('select');
@@ -35,7 +36,8 @@ export const useDocumentStore = defineStore('document', () => {
     isDirty.value = true;
   }
 
-  function loadAutomaton(newAutomaton: AnyAutomaton, name: string | null = null) {
+  function loadAutomaton(newAutomaton: AnyAutomaton, name: string | null = null, warnings: readonly { message: string }[] = []) {
+    importWarnings.value = warnings;
     automaton.value = newAutomaton;
     fileName.value = name;
     isDirty.value = false;
@@ -44,6 +46,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function newDocument(kind: AutomatonKind) {
+    importWarnings.value = [];
     automaton.value = createEmptyAutomaton(kind);
     fileName.value = null;
     isDirty.value = false;
@@ -93,6 +96,7 @@ export const useDocumentStore = defineStore('document', () => {
     automaton,
     fileName,
     isDirty,
+    importWarnings,
     selectedElement,
     inspectorFocusTarget,
     activeTool,

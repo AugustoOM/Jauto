@@ -1,6 +1,8 @@
 export type {
   AutomatonKind,
   AutomatonState,
+  AutomatonNote,
+  TransitionLayout,
   FATransition,
   PDATransition,
   TMTransition,

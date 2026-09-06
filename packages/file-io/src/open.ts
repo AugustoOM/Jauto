@@ -5,6 +5,7 @@ import type { FileService } from './file-service';
 export interface OpenResult {
   automaton: AnyAutomaton;
   fileName: string;
+  warnings: readonly { message: string; context?: string }[];
 }
 
 export class FileOpenError extends Error {
@@ -19,8 +20,8 @@ export async function openAutomaton(fileService: FileService): Promise<OpenResul
   if (!file) return null;
 
   try {
-    const { automaton } = parseJFF(file.content);
-    return { automaton, fileName: file.name };
+    const { automaton, warnings } = parseJFF(file.content);
+    return { automaton, fileName: file.name, warnings };
   } catch (e) {
     if (e instanceof JFFParseError) {
       throw new FileOpenError(`Failed to parse file "${file.name}": ${e.message}`);

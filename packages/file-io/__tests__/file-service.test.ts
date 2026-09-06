@@ -9,6 +9,12 @@ function service(): FileService {
 }
 
 describe('file service boundary', () => {
+  it('carries import diagnostics through the platform boundary', async () => {
+    const files = service();
+    vi.mocked(files.openFile).mockResolvedValue({ name: 'draft.jff', content: '<structure><type>fa</type><automaton/></structure>' });
+    const result = await openAutomaton(files);
+    expect(result?.warnings[0]?.message).toContain('initial state');
+  });
   it('keeps canceled opens distinct from parse failures', async () => {
     const files = service();
     await expect(openAutomaton(files)).resolves.toBeNull();

@@ -10,14 +10,19 @@ export interface AutomatonState {
   readonly label?: string;
 }
 
-export interface FATransition {
+export interface TransitionLayout {
+  readonly controlX?: number;
+  readonly controlY?: number;
+}
+
+export interface FATransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
   readonly read: string;
 }
 
-export interface PDATransition {
+export interface PDATransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
@@ -26,7 +31,7 @@ export interface PDATransition {
   readonly push: string;
 }
 
-export interface TMTransition {
+export interface TMTransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
@@ -37,11 +42,17 @@ export interface TMTransition {
 
 export type AnyTransition = FATransition | PDATransition | TMTransition;
 
+export interface AutomatonNote {
+  readonly text: string;
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface Automaton<T extends AnyTransition, K extends AutomatonKind = AutomatonKind> {
   readonly kind: K;
   readonly states: readonly AutomatonState[];
   readonly transitions: readonly T[];
-  readonly meta?: { readonly comment?: string };
+  readonly meta?: { readonly comment?: string; readonly notes?: readonly AutomatonNote[] };
 }
 
 export type FiniteAutomaton = Automaton<FATransition, 'fa'>;

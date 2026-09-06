@@ -8,11 +8,11 @@ This table records the audited baseline. Update a row only after its independent
 
 | Document or feature | Import | Preservation | Execution |
 | --- | --- | --- | --- |
-| Finite automata | Basic fixtures pass | Known ID, XML escaping and whitespace defects | DFA subset; NFA engine is not connected to the editor |
-| Pushdown automata | Basic fixtures pass | Known XML escaping and whitespace defects | Initial stack, string operations and branching require repair |
-| Single-tape Turing machines | Basic fixtures pass | Known XML escaping defects | Deterministic literal-symbol subset |
-| Notes and transition control points | Not represented | Lost on export | Layout only |
-| Multi-tape and building-block TMs | Unsafe partial parsing; must be rejected until supported | Not preserved | Unsupported |
+| Finite automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | DFA subset; NFA engine is not connected to the editor |
+| Pushdown automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Initial stack, string operations and branching require repair |
+| Single-tape Turing machines | Validated literal single-tape subset | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Deterministic literal-symbol subset |
+| Notes and transition control points | Preserved | Round-trip covered by automated tests | Layout only; editing UI is pending |
+| Multi-tape and building-block TMs | Rejected with an actionable error | Not editable | Unsupported |
 | Regular expressions, grammars, Mealy/Moore, L-systems, pumping exercises | Unsupported | Unsupported | Unsupported |
 
 ## First release contract
@@ -38,6 +38,8 @@ The first dependable milestone covers finite automata (including nondeterminism 
 5. Clean-checkout web and desktop builds, plus installed-application smoke checks for advertised platforms.
 
 Fixtures and their provenance are version-controlled so normal tests do not depend on live downloads. Native/JFLAP checks that require external runtimes must be reported separately when unavailable; they must not silently pass.
+
+Current automated exchange checks validate exported XML independently and enforce JFLAP-compatible integer state IDs. Reopening generated files in the JFLAP 7.1 application is still a manual/external conformance gate and remains pending.
 
 ## References
 

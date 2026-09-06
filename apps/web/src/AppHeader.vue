@@ -42,7 +42,7 @@ async function openFile() {
   try {
     const result = await openAutomaton(fileService);
     if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName);
+      docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
       historyStore.clear();
       simStore.stop();
     }
