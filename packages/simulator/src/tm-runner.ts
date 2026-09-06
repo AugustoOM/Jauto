@@ -100,8 +100,9 @@ export function createTMRunner(
       steps.push(result);
       if (result.status !== 'running') break;
     }
-    const final = steps.at(-1)!;
-    return { accepted: final.status === 'accepted', steps, finalConfig: final.config };
+    const status = getStatus();
+    const outcome = status === 'running' ? 'step-limit' : status;
+    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: getConfig() };
   }
 
   function reset() {

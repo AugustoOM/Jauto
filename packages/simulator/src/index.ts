@@ -1,5 +1,6 @@
 export type {
   SimulationRunner,
+  SimulationRunOutcome,
   StepResult,
   RunResult,
   SimulationStatus,

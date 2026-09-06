@@ -148,7 +148,7 @@ No source or configuration files were changed during the audit. Native installer
 - [ ] Restart or invalidate simulations after semantic edits; define behavior for layout-only edits.
 - [ ] Show consumed/remaining input, PDA stack, TM tape/head, and active configurations.
 - [ ] Show branch selection and accepting witnesses for nondeterministic runs.
-- [ ] Expose meaningful execution limits and clear incomplete/canceled statuses.
+- [x] Expose meaningful execution limits and clear incomplete/canceled statuses.
 - [ ] Add batch input testing after individual simulation and replay are dependable.
 
 **Acceptance criteria:** Every displayed step, highlight, configuration, and status describes the same execution point. Users can inspect why a word was accepted or rejected.
@@ -247,5 +247,6 @@ Before calling the automata milestone dependable:
 - Safe JFF exchange: added strict XML/document validation, loss-preventing rejection for unsupported constructs, numeric state-ID mapping, semantic XML entity/whitespace preservation, notes and transition control-point round trips, and visible import notices. Validation: 39 JFF tests and 3 UI tests passed; workspace type checks and lint passed. Independent XML checks cover generated IDs and references. Reopening generated files in the JFLAP application remains an external conformance gate.
 - Keyboard safety: centralized editable-target, default-prevention and IME-composition guards for canvas commands and application undo/redo shortcuts. Validation: 8 UI tests passed; workspace type checks and lint passed.
 - NFA editor execution: routed nondeterministic finite automata to the NFA runner, exposed epsilon-closure branch states in the canvas highlights, and derived the initial status from the runner so empty-input acceptance is immediate. Validation: 11 UI tests passed; workspace type checks and lint passed.
+- Bounded simulation outcomes: added an explicit `step-limit` run outcome, preserved the current configuration for zero-step runs, and removed the shared `run(0)` crash from all four runners. Validation: 30 simulator tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.

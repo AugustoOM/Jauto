@@ -1,4 +1,5 @@
 export type SimulationStatus = 'running' | 'accepted' | 'rejected' | 'halted';
+export type SimulationRunOutcome = Exclude<SimulationStatus, 'running'> | 'step-limit';
 
 export interface StepResult<TConfig> {
   config: TConfig;
@@ -8,6 +9,7 @@ export interface StepResult<TConfig> {
 
 export interface RunResult<TConfig> {
   accepted: boolean;
+  outcome: SimulationRunOutcome;
   steps: StepResult<TConfig>[];
   finalConfig: TConfig;
 }
