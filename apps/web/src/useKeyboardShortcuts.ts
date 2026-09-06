@@ -1,10 +1,11 @@
 import { onMounted, onUnmounted } from 'vue';
-import { useHistoryStore } from '@jauto/ui';
+import { shouldHandleGraphKey, useHistoryStore } from '@jauto/ui';
 
 export function useKeyboardShortcuts() {
   const historyStore = useHistoryStore();
 
   function handler(e: KeyboardEvent) {
+    if (!shouldHandleGraphKey(e)) return;
     const ctrl = e.ctrlKey || e.metaKey;
 
     if (ctrl && e.key === 'z' && !e.shiftKey) {

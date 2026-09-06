@@ -104,7 +104,7 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P1  
 **Dependencies:** Can proceed alongside steps 2 and 4
 
-- [ ] Centralize keyboard handling with editable-target, focus, modifier, and IME guards.
+- [x] Centralize keyboard handling with editable-target, focus, modifier, and IME guards.
 - [ ] Add a shared document lifecycle for New/Open/Home/Close with Save/Discard/Cancel behavior.
 - [ ] Add recoverable drafts, reload/close protection, and a Resume path from Home.
 - [ ] Track document identity, current revision, and saved revision rather than a manually toggled dirty flag.
@@ -245,5 +245,6 @@ Before calling the automata milestone dependable:
 - Test and CI foundation: enabled Vue linting, added UI/history and file-service tests, retained the official PDA fixture with provenance, replaced obsolete Vitest workspace configuration, and added PR/release checks. Validation: 86 tests passed; lint, type checking and both frontend builds passed; Turbo task graph verified. Full simulator conformance and installed-platform checks remain outstanding.
 - Document identity: made machine kinds discriminated, allocated IDs against the open document, rejected duplicate additions and introduced structural diagnostics for damaged graphs. Validation: 40 core tests passed; all workspace type checks and lint passed. Structural diagnostics will be connected to file opening/export in the next feature.
 - Safe JFF exchange: added strict XML/document validation, loss-preventing rejection for unsupported constructs, numeric state-ID mapping, semantic XML entity/whitespace preservation, notes and transition control-point round trips, and visible import notices. Validation: 39 JFF tests and 3 UI tests passed; workspace type checks and lint passed. Independent XML checks cover generated IDs and references. Reopening generated files in the JFLAP application remains an external conformance gate.
+- Keyboard safety: centralized editable-target, default-prevention and IME-composition guards for canvas commands and application undo/redo shortcuts. Validation: 8 UI tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.

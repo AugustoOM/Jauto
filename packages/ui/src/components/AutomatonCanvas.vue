@@ -5,6 +5,7 @@ import { useSimulationStore } from '../stores/simulation';
 import { useCanvasRenderer, readCssVar } from '../composables/useCanvasRenderer';
 import { usePanZoom } from '../composables/usePanZoom';
 import { useInteractionManager } from '../composables/useInteractionManager';
+import { isEditableKeyTarget, shouldHandleGraphKey } from '../keyboard';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const spaceHeldForPan = ref(false);
@@ -71,12 +72,6 @@ function getCanvasRect(): DOMRect {
   return canvasRef.value!.getBoundingClientRect();
 }
 
-function isEditableKeyTarget(elt: EventTarget | null) {
-  if (!elt || !(elt instanceof Element)) return false;
-  if (elt.closest('input, textarea, [contenteditable="true"]')) return true;
-  return false;
-}
-
 function handleMouseDown(e: MouseEvent) {
   const pointerType = (e as PointerEvent).pointerType;
   if (spaceHeldForPan.value && e.button === 0) {
@@ -105,7 +100,7 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault();
     spaceHeldForPan.value = true;
   }
-  interaction.onKeyDown(e);
+  if (shouldHandleGraphKey(e)) interaction.onKeyDown(e);
   updateModifier(e);
 }
 
