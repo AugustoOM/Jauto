@@ -137,7 +137,7 @@ function remainingText(config: Record<string, unknown>): string {
               <b :class="{ 'sim-controls__head': index === branch.config.headPosition }">{{ symbol }}</b>
             </template>
           </span>
-          <span>path {{ branch.path.length ? branch.path.join(' → ') : 'initial' }}</span>
+          <span>via {{ branch.path.length ? branch.path.join(', ') : 'initial configuration' }}</span>
         </div>
       </div>
       <div v-if="sim.acceptingPath.length" class="sim-controls__witness">

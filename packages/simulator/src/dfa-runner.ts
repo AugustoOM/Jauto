@@ -10,6 +10,11 @@ export function createDFARunner(
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
   const initialId = initialState.id;
+  const statesById = new Map(automaton.states.map((state) => [state.id, state]));
+  const transitionsByState = new Map<string, typeof automaton.transitions>();
+  for (const transition of automaton.transitions) {
+    transitionsByState.set(transition.from, [...(transitionsByState.get(transition.from) ?? []), transition]);
+  }
 
   let config: DFAConfig = {
     currentState: initialId,
@@ -25,7 +30,7 @@ export function createDFARunner(
   function getStatus(): SimulationStatus {
     if (canceled) return 'canceled';
     if (config.remainingInput.length === 0) {
-      const state = automaton.states.find((s) => s.id === config.currentState);
+      const state = statesById.get(config.currentState);
       return state?.isFinal ? 'accepted' : 'rejected';
     }
     return halted ? 'rejected' : 'running';
@@ -36,7 +41,7 @@ export function createDFARunner(
       return snapshot();
     }
 
-    const transition = automaton.transitions.find(
+    const transition = (transitionsByState.get(config.currentState) ?? []).find(
       (t) => t.from === config.currentState && t.read.length > 0 && config.remainingInput.startsWith(t.read),
     );
 
@@ -50,7 +55,7 @@ export function createDFARunner(
       remainingInput: config.remainingInput.slice(transition.read.length),
       inputIndex: config.inputIndex + transition.read.length,
     };
-    path = [...path, transition.id];
+    path.push(transition.id);
     lastTransitionId = transition.id;
     stepIndex++;
     return snapshot([transition.id]);
@@ -60,7 +65,7 @@ export function createDFARunner(
     const status = getStatus();
     return {
       config,
-      configurations: [{ id: `${config.currentState}\u0000${config.inputIndex}`, config, transitionId: lastTransitionId, path }],
+      configurations: [{ id: `${config.currentState}\u0000${config.inputIndex}`, config, transitionId: lastTransitionId, path: lastTransitionId ? [lastTransitionId] : [] }],
       transitionIds,
       acceptingPath: status === 'accepted' ? path : undefined,
       status,

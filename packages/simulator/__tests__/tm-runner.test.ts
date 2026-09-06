@@ -102,6 +102,6 @@ describe('TM Runner', () => {
     expect(runner.currentStep.configurations[0]?.config.tape).toEqual(['0', '1']);
     expect(runner.currentStep.transitionIds).toEqual([]);
     expect(runner.step().transitionIds).toEqual(['t0']);
-    expect(runner.step().configurations[0]?.path).toEqual(['t0', 't1']);
+    expect(runner.step().configurations[0]?.path).toEqual(['t1']);
   });
 });

@@ -14,6 +14,7 @@
     "dev": "echo 'ui: no dev server (consumed by apps)'",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src/",
+    "bench": "vitest bench --run",
     "test": "vitest run"
   },
   "dependencies": {

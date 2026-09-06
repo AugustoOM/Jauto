@@ -20,6 +20,8 @@ export interface BatchResult {
   message?: string;
 }
 
+const MAX_RETAINED_STEPS = 10000;
+
 export const useSimulationStore = defineStore('simulation', () => {
   const document = useDocumentStore();
   const input = ref('');
@@ -105,6 +107,14 @@ export const useSimulationStore = defineStore('simulation', () => {
 
   function executeStep() {
     if (!runner || executionStatus !== 'running') return;
+    if (traceSteps.value.length > MAX_RETAINED_STEPS) {
+      runner.cancel();
+      runner = null;
+      executionStatus = 'incomplete';
+      status.value = 'incomplete';
+      errorMessage.value = `Replay history reached the ${MAX_RETAINED_STEPS.toLocaleString()}-step limit.`;
+      return;
+    }
     const result = runner.step();
     traceSteps.value = [...traceSteps.value, result];
     executionStatus = result.status;
@@ -177,8 +187,13 @@ export const useSimulationStore = defineStore('simulation', () => {
     batchResults.value = batchInput.value.split(/\r?\n/).map((value) => value.trim()).map((value) => {
       try {
         const batchRunner = createRunnerFor(automaton, value);
-        const result = batchRunner.run(maxSteps);
-        return { input: value, outcome: result.outcome, steps: result.steps.length };
+        let result = batchRunner.currentStep;
+        let steps = 0;
+        while (result.status === 'running' && steps < maxSteps) {
+          result = batchRunner.step();
+          steps++;
+        }
+        return { input: value, outcome: result.status === 'running' ? 'incomplete' as const : result.status, steps };
       } catch (error) {
         return { input: value, outcome: 'invalid' as const, steps: 0, message: error instanceof Error ? error.message : String(error) };
       }

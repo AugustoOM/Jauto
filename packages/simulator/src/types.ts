@@ -8,7 +8,7 @@ export interface SimulationBranch<TConfig> {
   config: TConfig;
   /** Transition used to create this configuration in the current step. */
   transitionId?: string;
-  /** Complete transition path from the initial configuration. */
+  /** Transition(s) that selected this branch in the current snapshot. */
   path: readonly string[];
 }
 

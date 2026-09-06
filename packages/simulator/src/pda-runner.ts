@@ -21,6 +21,11 @@ export function createPDARunner(
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
   const initialId = initialState.id;
+  const statesById = new Map(automaton.states.map((state) => [state.id, state]));
+  const transitionsByState = new Map<string, typeof automaton.transitions>();
+  for (const transition of automaton.transitions) {
+    transitionsByState.set(transition.from, [...(transitionsByState.get(transition.from) ?? []), transition]);
+  }
 
   let configs: PDAConfiguration[] = [
     { state: initialId, remaining: input, inputIndex: 0, stack: ['Z'], path: [] },
@@ -47,8 +52,7 @@ export function createPDARunner(
 
   function hasApplicableTransitions(): boolean {
     for (const c of configs) {
-      for (const t of automaton.transitions) {
-        if (t.from !== c.state) continue;
+      for (const t of transitionsByState.get(c.state) ?? []) {
         const readMatches = c.remaining.startsWith(t.read);
         const popMatches = stackEndsWith(c.stack, t.pop);
         if (readMatches && popMatches) return true;
@@ -73,7 +77,7 @@ export function createPDARunner(
 
     for (const c of configs) {
       if (c.remaining.length === 0) {
-        const state = automaton.states.find((s) => s.id === c.state);
+        const state = statesById.get(c.state);
         if (state?.isFinal) return 'accepted';
       }
     }
@@ -92,8 +96,7 @@ export function createPDARunner(
     const executed = new Set<string>();
 
     for (const c of configs) {
-      for (const t of automaton.transitions) {
-        if (t.from !== c.state) continue;
+      for (const t of transitionsByState.get(c.state) ?? []) {
 
         const readMatches = c.remaining.startsWith(t.read);
         const popMatches = stackEndsWith(c.stack, t.pop);
@@ -131,7 +134,7 @@ export function createPDARunner(
 
     for (const c of configs) {
       if (c.remaining.length === 0) {
-        const state = automaton.states.find((s) => s.id === c.state);
+        const state = statesById.get(c.state);
         if (state?.isFinal) {
           accepted = true;
           break;
@@ -149,10 +152,10 @@ export function createPDARunner(
   function snapshot(transitionIds: readonly string[] = []): StepResult<PDAConfig> {
     const config = toPublicConfig();
     const status = getStatus();
-    const accepting = configs.find((candidate) => candidate.remaining.length === 0 && automaton.states.some((state) => state.id === candidate.state && state.isFinal));
+    const accepting = configs.find((candidate) => candidate.remaining.length === 0 && statesById.get(candidate.state)?.isFinal);
     return {
       config,
-      configurations: configs.map((candidate) => ({ id: configurationKey(candidate), config: toBranchConfig(candidate), transitionId: candidate.transitionId, path: candidate.path })),
+      configurations: configs.map((candidate) => ({ id: configurationKey(candidate), config: toBranchConfig(candidate), transitionId: candidate.transitionId, path: candidate.transitionId ? [candidate.transitionId] : [] })),
       transitionIds,
       acceptingPath: status === 'accepted' ? accepting?.path : undefined,
       status,

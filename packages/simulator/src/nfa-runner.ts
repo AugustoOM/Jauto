@@ -16,6 +16,11 @@ export function createNFARunner(
 ): SimulationRunner<NFAConfig> {
   const initialState = automaton.states.find((state) => state.isInitial);
   if (!initialState) throw new Error('No initial state');
+  const statesById = new Map(automaton.states.map((state) => [state.id, state]));
+  const transitionsByState = new Map<string, typeof automaton.transitions>();
+  for (const transition of automaton.transitions) {
+    transitionsByState.set(transition.from, [...(transitionsByState.get(transition.from) ?? []), transition]);
+  }
 
   function branchKey(branch: Branch): string {
     return `${branch.state}\u0000${branch.inputIndex}`;
@@ -26,8 +31,8 @@ export function createNFARunner(
     const queue = [...seed];
     while (queue.length > 0) {
       const current = queue.shift()!;
-      for (const transition of automaton.transitions) {
-        if (transition.from !== current.state || transition.read !== '') continue;
+      for (const transition of transitionsByState.get(current.state) ?? []) {
+        if (transition.read !== '') continue;
         const next = { state: transition.to, inputIndex: current.inputIndex, transitionId: transition.id, path: [...current.path, transition.id] };
         const key = branchKey(next);
         if (!closure.has(key)) {
@@ -60,12 +65,11 @@ export function createNFARunner(
 
   function isAccepting(branch: Branch): boolean {
     return branch.inputIndex === input.length &&
-      Boolean(automaton.states.find((state) => state.id === branch.state)?.isFinal);
+      Boolean(statesById.get(branch.state)?.isFinal);
   }
 
   function hasApplicableTransition(): boolean {
-    return branches.some((branch) => automaton.transitions.some((transition) =>
-      transition.from === branch.state &&
+    return branches.some((branch) => (transitionsByState.get(branch.state) ?? []).some((transition) =>
       transition.read.length > 0 &&
       input.startsWith(transition.read, branch.inputIndex),
     ));
@@ -87,9 +91,8 @@ export function createNFARunner(
     const next = new Map<string, Branch>();
     const executed = new Set<string>();
     for (const branch of branches) {
-      for (const transition of automaton.transitions) {
+      for (const transition of transitionsByState.get(branch.state) ?? []) {
         if (
-          transition.from === branch.state &&
           transition.read.length > 0 &&
           input.startsWith(transition.read, branch.inputIndex)
         ) {
@@ -119,7 +122,7 @@ export function createNFARunner(
         id: branchKey(branch),
         config: { activeStates: new Set([branch.state]), remainingInput: input.slice(branch.inputIndex), inputIndex: branch.inputIndex },
         transitionId: branch.transitionId,
-        path: branch.path,
+        path: branch.transitionId ? [branch.transitionId] : [],
       })),
       transitionIds,
       acceptingPath: status === 'accepted' ? accepting?.path : undefined,

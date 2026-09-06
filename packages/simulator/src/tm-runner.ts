@@ -35,6 +35,11 @@ export function createTMRunner(
   if (!initialState) throw new Error('No initial state');
   const initialId = initialState.id;
   const initialIsFinal = initialState.isFinal;
+  const statesById = new Map(automaton.states.map((state) => [state.id, state]));
+  const transitionsByState = new Map<string, typeof automaton.transitions>();
+  for (const transition of automaton.transitions) {
+    transitionsByState.set(transition.from, [...(transitionsByState.get(transition.from) ?? []), transition]);
+  }
 
   const initialTape = input.length > 0 ? input.split('') : [BLANK];
 
@@ -85,8 +90,7 @@ export function createTMRunner(
 
     const currentSymbol = readTape();
 
-    const transition = automaton.transitions.find((t) => {
-      if (t.from !== currentState) return false;
+    const transition = (transitionsByState.get(currentState) ?? []).find((t) => {
       const tRead = t.read || BLANK;
       return tRead === currentSymbol || (t.read === '' && currentSymbol === BLANK);
     });
@@ -111,10 +115,10 @@ export function createTMRunner(
     }
 
     stepCount++;
-    path = [...path, transition.id];
+    path.push(transition.id);
     lastTransitionId = transition.id;
 
-    const state = automaton.states.find((s) => s.id === currentState);
+    const state = statesById.get(currentState);
     if (state?.isFinal && acceptByFinalState) {
       haltReason = 'final-state';
     }
@@ -127,7 +131,7 @@ export function createTMRunner(
     const status = getStatus();
     return {
       config,
-      configurations: [{ id: `${currentState}\u0000${headPosition}\u0000${stepCount}`, config, transitionId: lastTransitionId, path }],
+      configurations: [{ id: `${currentState}\u0000${headPosition}\u0000${stepCount}`, config, transitionId: lastTransitionId, path: lastTransitionId ? [lastTransitionId] : [] }],
       transitionIds,
       acceptingPath: status === 'accepted' ? path : undefined,
       status,
