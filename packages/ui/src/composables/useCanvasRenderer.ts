@@ -23,7 +23,7 @@ export interface RenderOptions {
   scale: number;
   selected: SelectedElement;
   highlightedStates?: ReadonlySet<string>;
-  activeTransition?: TransitionHighlight | null;
+  activeTransitions?: readonly TransitionHighlight[];
 }
 
 export function useCanvasRenderer() {
@@ -34,7 +34,7 @@ export function useCanvasRenderer() {
     automaton: AnyAutomaton,
     options: RenderOptions,
   ) {
-    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransition } = options;
+    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransitions = [] } = options;
 
     const canvasBg = readCssVar('--color-canvas-bg', '#111111');
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
@@ -56,14 +56,14 @@ export function useCanvasRenderer() {
       if (!from || !to) continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
-      const isActiveTransition = activeTransition?.transitionId === t.id;
+      const isActiveTransition = activeTransitions.some((active) => active.transitionId === t.id);
       drawTransition(ctx, from, to, t, automaton, isSelected, isActiveTransition, fontSans);
     }
 
     for (const state of automaton.states) {
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
-      const simulationRole = getSimulationStateRole(state.id, activeTransition);
+      const simulationRole = getSimulationStateRole(state.id, activeTransitions);
       drawState(ctx, state, isSelected, isHighlighted, simulationRole, fontSans);
     }
 
@@ -344,11 +344,10 @@ export function useCanvasRenderer() {
 
   function getSimulationStateRole(
     stateId: string,
-    activeTransition: TransitionHighlight | null | undefined,
+    activeTransitions: readonly TransitionHighlight[],
   ) {
-    if (!activeTransition) return null;
-    const isSource = activeTransition.sourceStateId === stateId;
-    const isTarget = activeTransition.targetStateId === stateId;
+    const isSource = activeTransitions.some((transition) => transition.sourceStateId === stateId);
+    const isTarget = activeTransitions.some((transition) => transition.targetStateId === stateId);
     if (isSource && isTarget) return 'both';
     if (isSource) return 'source';
     if (isTarget) return 'target';

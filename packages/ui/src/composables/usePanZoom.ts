@@ -78,7 +78,7 @@ export function usePanZoom() {
     isPanning = false;
   }
 
-  function fitAll(states: { x: number; y: number }[], canvasWidth: number, canvasHeight: number) {
+  function fitAll(states: readonly { x: number; y: number }[], canvasWidth: number, canvasHeight: number) {
     if (states.length === 0) {
       offsetX.value = 0;
       offsetY.value = 0;
