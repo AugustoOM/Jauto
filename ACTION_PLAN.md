@@ -131,9 +131,9 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Replace silent branch truncation with explicit resource-limit outcomes.
 - [x] Standardize accepted, rejected, invalid, canceled, and incomplete outcomes across runners.
 - [x] Validate execution budgets, including zero/negative values, and make terminal steps idempotent.
-- [ ] Repair determinism checks and remove placeholder completeness results.
-- [ ] Separate input, stack, and tape alphabet helpers.
-- [ ] Update existing tests that encode incompatible PDA initialization assumptions.
+- [x] Repair determinism checks and remove placeholder completeness results.
+- [x] Separate input, stack, and tape alphabet helpers.
+- [x] Update existing tests that encode incompatible PDA initialization assumptions.
 
 **Acceptance criteria:** Official examples and edge cases produce expected results. Exhausted resources never count as proof of rejection. Unsupported execution modes are identified before running.
 
@@ -257,5 +257,6 @@ Before calling the automata milestone dependable:
 - Inspector transaction boundary: registered the active inspector draft with the document store and flush it before selection changes, save, New/Open, simulation start, undo, and redo. Validation: 21 UI tests passed; workspace type checks and lint passed.
 - Fair bounded exploration: deduplicated NFA/PDA configurations during breadth-first stepping, replaced PDA's silent 1,000-branch truncation with an `incomplete` result and `configuration-limit` reason, validated run budgets, and made terminal stepping idempotent. Validation: 43 simulator tests passed; simulator type checks and lint passed.
 - Execution profiles and outcomes: added terminal cancellation across runners, surfaced invalid-machine errors in the editor, implemented configurable TM final-state/halting acceptance, and reject nondeterministic TMs, disabled stay moves, and JFLAP shortcut syntax before execution when unsupported. Validation: 49 simulator and 21 UI tests passed; workspace type checks and lint passed.
+- Machine analysis: added separate input, stack, and tape alphabet helpers; made PDA determinism account for overlapping read/pop prefixes and equivalent blank spellings; implemented symbol-level FA, conservative PDA, and literal-TM completeness checks; and updated legacy PDA tests to start with JFLAP's `Z`. Validation: 51 core and 49 simulator tests passed; full workspace tests, type checks, lint, Rust format, and Rust check passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.

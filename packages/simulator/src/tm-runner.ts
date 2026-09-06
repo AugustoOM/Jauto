@@ -25,6 +25,9 @@ export function createTMRunner(
   if (automaton.transitions.some((transition) => /[!~}]/.test(transition.read) || /[!~}]/.test(transition.write))) {
     throw new UnsupportedSimulationError('JFLAP Turing-machine shortcut syntax is not supported yet');
   }
+  if (automaton.transitions.some((transition) => transition.read.length > 1 || transition.write.length > 1)) {
+    throw new UnsupportedSimulationError('Turing transitions must read and write one tape symbol');
+  }
   if (!allowStay && automaton.transitions.some((transition) => transition.move === 'S')) {
     throw new UnsupportedSimulationError('Stay moves are disabled by this execution profile');
   }

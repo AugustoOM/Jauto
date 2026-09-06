@@ -6,6 +6,7 @@ import type {
   TuringMachine,
 } from './types';
 import { getTransitionsFrom } from './graph';
+import { getInputAlphabet, getStackAlphabet, getTapeAlphabet } from './alphabets';
 
 export interface ValidationDiagnostic {
   readonly level: 'error' | 'warning';
@@ -52,21 +53,28 @@ function checkFADeterminism(automaton: FiniteAutomaton): boolean {
 function checkPDADeterminism(automaton: PushdownAutomaton): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
-    for (const t of transitions) {
-      const matches = transitions.filter(
-        (other) => other.id !== t.id && other.read === t.read && other.pop === t.pop,
-      );
-      if (matches.length > 0) return false;
+    for (let i = 0; i < transitions.length; i++) {
+      for (let j = i + 1; j < transitions.length; j++) {
+        if (prefixesOverlap(transitions[i]!.read, transitions[j]!.read) &&
+            prefixesOverlap(transitions[i]!.pop, transitions[j]!.pop)) return false;
+      }
     }
   }
   return true;
+}
+
+function prefixesOverlap(left: string, right: string): boolean {
+  return left.startsWith(right) || right.startsWith(left);
 }
 
 function checkTMDeterminism(automaton: TuringMachine): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
     for (const t of transitions) {
-      const matches = transitions.filter((other) => other.id !== t.id && other.read === t.read);
+      const read = t.read || '\u25A1';
+      const matches = transitions.filter(
+        (other) => other.id !== t.id && (other.read || '\u25A1') === read,
+      );
       if (matches.length > 0) return false;
     }
   }
@@ -85,27 +93,38 @@ export function isComplete(automaton: AnyAutomaton): boolean {
 }
 
 function checkFACompleteness(automaton: FiniteAutomaton): boolean {
-  const alphabet = new Set<string>();
-  for (const t of automaton.transitions) {
-    if (t.read !== '') alphabet.add(t.read);
-  }
+  const alphabet = getInputAlphabet(automaton);
 
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
-    const covered = new Set(transitions.map((t) => t.read));
     for (const symbol of alphabet) {
-      if (!covered.has(symbol)) return false;
+      if (!transitions.some((transition) => transition.read.startsWith(symbol))) return false;
     }
   }
   return true;
 }
 
-function checkPDACompleteness(_automaton: PushdownAutomaton): boolean {
-  return true;
+function checkPDACompleteness(automaton: PushdownAutomaton): boolean {
+  const inputAlphabet = [...getInputAlphabet(automaton)];
+  const stackAlphabet = [...getStackAlphabet(automaton)];
+  if (inputAlphabet.length === 0) return false;
+  return automaton.states.every((state) => {
+    const transitions = getTransitionsFrom(automaton, state.id);
+    return inputAlphabet.every((input) => stackAlphabet.every((stack) =>
+      transitions.some((transition) =>
+        (transition.read === '' || transition.read.startsWith(input)) &&
+        (transition.pop === '' || transition.pop.startsWith(stack)),
+      ),
+    ));
+  });
 }
 
-function checkTMCompleteness(_automaton: TuringMachine): boolean {
-  return true;
+function checkTMCompleteness(automaton: TuringMachine): boolean {
+  const tapeAlphabet = getTapeAlphabet(automaton);
+  return automaton.states.every((state) => {
+    const reads = new Set(getTransitionsFrom(automaton, state.id).map((transition) => transition.read || '\u25A1'));
+    return [...tapeAlphabet].every((symbol) => reads.has(symbol));
+  });
 }
 
 export function hasUnreachableStates(automaton: AnyAutomaton): boolean {

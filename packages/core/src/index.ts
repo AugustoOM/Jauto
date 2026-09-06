@@ -42,6 +42,7 @@ export {
 export type { ValidationDiagnostic } from './validation';
 
 export { generateStateId, generateTransitionId, createIdGenerator, resetIdCounters } from './ids';
+export { getInputAlphabet, getStackAlphabet, getTapeAlphabet } from './alphabets';
 export type { IdGenerator } from './ids';
 
 export type { Command } from './commands/types';

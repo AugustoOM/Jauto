@@ -90,5 +90,10 @@ describe('TM Runner', () => {
       [t('t0', '0', '1', '~', '~', 'R')],
     );
     expect(() => createTMRunner(shortcut, 'a')).toThrow('shortcut syntax');
+    const multipleSymbols = buildTM(
+      [s('0', { isInitial: true }), s('1')],
+      [t('t0', '0', '1', 'ab', 'x', 'R')],
+    );
+    expect(() => createTMRunner(multipleSymbols, 'ab')).toThrow('one tape symbol');
   });
 });

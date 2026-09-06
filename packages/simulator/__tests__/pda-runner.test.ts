@@ -16,7 +16,7 @@ const t = (id: string, from: string, to: string, read: string, pop: string, push
 
 describe('PDA Runner', () => {
   // PDA for a^n b^n (n >= 0) by final state.
-  // q0: push Z (bottom marker) and move to q1
+  // q0: confirm the JFLAP-provided Z bottom marker and move to q1
   // q1: for each 'a', push A
   // q1: epsilon to q2
   // q2: for each 'b', pop A
@@ -29,7 +29,7 @@ describe('PDA Runner', () => {
       s('3', { isFinal: true }),
     ],
     [
-      t('t0', '0', '1', '', '', 'Z'),      // push bottom marker
+      t('t0', '0', '1', '', 'Z', 'Z'),      // retain the initial bottom marker
       t('t1', '1', '1', 'a', '', 'A'),      // push A for each a
       t('t2', '1', '2', '', '', ''),         // switch to matching b's
       t('t3', '2', '2', 'b', 'A', ''),      // pop A for each b
