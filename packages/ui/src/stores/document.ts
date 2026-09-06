@@ -23,6 +23,7 @@ export interface DocumentRevisionToken {
 }
 
 export const useDocumentStore = defineStore('document', () => {
+  const recoveryKey = 'jauto:recovery-draft:v1';
   const currentView = ref<AppView>('home');
   const automaton = ref<AnyAutomaton>(createEmptyAutomaton('fa'));
   const fileName = ref<string | null>(null);
@@ -40,16 +41,38 @@ export const useDocumentStore = defineStore('document', () => {
 
   const automatonKind = computed<AutomatonKind>(() => automaton.value.kind);
   const isDirty = computed(() => revision.value !== savedRevision.value);
+  const canResume = computed(() => automaton.value.states.length > 0 || isDirty.value || fileName.value !== null);
+
+  function recoveryStorage(): Storage | null {
+    try {
+      return typeof localStorage === 'undefined' ? null : localStorage;
+    } catch {
+      return null;
+    }
+  }
+
+  function persistRecoveryDraft() {
+    const storage = recoveryStorage();
+    if (!storage) return;
+    storage.setItem(recoveryKey, JSON.stringify({ automaton: automaton.value, fileName: fileName.value }));
+  }
+
+  function clearRecoveryDraft() {
+    recoveryStorage()?.removeItem(recoveryKey);
+  }
 
   function setAutomaton(newAutomaton: AnyAutomaton): number {
     automaton.value = newAutomaton;
     revision.value = ++nextRevision;
+    persistRecoveryDraft();
     return revision.value;
   }
 
   function restoreAutomaton(newAutomaton: AnyAutomaton, restoredRevision: number) {
     automaton.value = newAutomaton;
     revision.value = restoredRevision;
+    if (isDirty.value) persistRecoveryDraft();
+    else clearRecoveryDraft();
   }
 
   function previewAutomaton(newAutomaton: AnyAutomaton) {
@@ -68,6 +91,7 @@ export const useDocumentStore = defineStore('document', () => {
     automaton.value = newAutomaton;
     fileName.value = name;
     resetIdentity();
+    clearRecoveryDraft();
     selectedElement.value = null;
     currentView.value = 'editor';
   }
@@ -77,12 +101,36 @@ export const useDocumentStore = defineStore('document', () => {
     automaton.value = createEmptyAutomaton(kind);
     fileName.value = null;
     resetIdentity();
+    clearRecoveryDraft();
     selectedElement.value = null;
     currentView.value = 'editor';
   }
 
   function goHome() {
     currentView.value = 'home';
+  }
+
+  function resume() {
+    if (canResume.value) currentView.value = 'editor';
+  }
+
+  function restoreRecoveryDraft(): boolean {
+    const raw = recoveryStorage()?.getItem(recoveryKey);
+    if (!raw) return false;
+    try {
+      const parsed = JSON.parse(raw) as { automaton?: AnyAutomaton; fileName?: string | null };
+      if (!parsed.automaton || !['fa', 'pda', 'turing'].includes(parsed.automaton.kind)) return false;
+      if (!Array.isArray(parsed.automaton.states) || !Array.isArray(parsed.automaton.transitions)) return false;
+      automaton.value = parsed.automaton;
+      fileName.value = parsed.fileName ?? null;
+      resetIdentity();
+      revision.value = ++nextRevision;
+      currentView.value = 'home';
+      return true;
+    } catch {
+      clearRecoveryDraft();
+      return false;
+    }
   }
 
   function select(element: SelectedElement) {
@@ -121,6 +169,8 @@ export const useDocumentStore = defineStore('document', () => {
     if (token.documentId !== documentId.value) return false;
     savedRevision.value = token.revision;
     if (name) fileName.value = name;
+    if (isDirty.value) persistRecoveryDraft();
+    else clearRecoveryDraft();
     return true;
   }
 
@@ -132,6 +182,7 @@ export const useDocumentStore = defineStore('document', () => {
     revision,
     savedRevision,
     isDirty,
+    canResume,
     importWarnings,
     selectedElement,
     inspectorFocusTarget,
@@ -144,6 +195,9 @@ export const useDocumentStore = defineStore('document', () => {
     loadAutomaton,
     newDocument,
     goHome,
+    resume,
+    restoreRecoveryDraft,
+    clearRecoveryDraft,
     rename,
     select,
     requestInspectorFocus,

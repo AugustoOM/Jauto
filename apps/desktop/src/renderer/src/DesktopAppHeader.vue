@@ -5,6 +5,7 @@ import {
   Pencil,
   Save,
   ThemeToggle,
+  runProtectedDocumentAction,
   useDocumentStore,
   useHistoryStore,
   useSimulationStore,
@@ -32,38 +33,60 @@ function closeMenu() {
   openMenu.value = null;
 }
 
-function goBack() {
+async function saveForLifecycle(): Promise<boolean> {
+  try {
+    return await persistToDisk();
+  } catch (err) {
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+}
+
+async function goBack() {
   closeMenu();
   simStore.stop();
   docStore.goHome();
 }
 
-function newDocument(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
+async function newDocument(kind: AutomatonKind) {
   closeMenu();
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveForLifecycle,
+    action: () => {
+      docStore.newDocument(kind);
+      historyStore.clear();
+      simStore.stop();
+    },
+  });
 }
 
 async function openFile() {
   closeMenu();
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    window.alert(`Failed to open: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveForLifecycle,
+    action: async () => {
+      try {
+        const result = await openAutomaton(fileService);
+        if (result) {
+          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+          historyStore.clear();
+          simStore.stop();
+        }
+      } catch (err) {
+        window.alert(`Failed to open: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+  });
 }
 
-async function persistToDisk() {
+async function persistToDisk(): Promise<boolean> {
   const name = docStore.fileName ?? 'untitled.jff';
   const token = docStore.createRevisionToken();
   const saved = await saveAutomaton(fileService, docStore.automaton, name);
   if (saved) docStore.markSaved(token, name);
+  return saved;
 }
 
 async function saveFile() {

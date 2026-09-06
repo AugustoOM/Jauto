@@ -18,3 +18,5 @@ export { saveDocumentKey, type SaveDocumentFn } from './injectionKeys';
 
 export { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from './constants';
 export { isEditableKeyTarget, shouldHandleGraphKey } from './keyboard';
+export { createBeforeUnloadHandler, requestDocumentLifecycleDecision, runProtectedDocumentAction } from './documentLifecycle';
+export type { DocumentLifecycleDecision, ConfirmFn } from './documentLifecycle';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { Pencil, Save } from '@lucide/vue';
-import { useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
+import { runProtectedDocumentAction, useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
 
@@ -24,38 +24,60 @@ function closeMenu() {
   openMenu.value = null;
 }
 
-function goHome() {
+async function saveForLifecycle(): Promise<boolean> {
+  try {
+    return await persistToDisk();
+  } catch (err) {
+    alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+}
+
+async function goHome() {
   closeMenu();
   simStore.stop();
   docStore.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
   closeMenu();
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveForLifecycle,
+    action: () => {
+      docStore.newDocument(kind);
+      historyStore.clear();
+      simStore.stop();
+    },
+  });
 }
 
 async function openFile() {
   closeMenu();
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveForLifecycle,
+    action: async () => {
+      try {
+        const result = await openAutomaton(fileService);
+        if (result) {
+          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+          historyStore.clear();
+          simStore.stop();
+        }
+      } catch (err) {
+        alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+  });
 }
 
-async function persistToDisk() {
+async function persistToDisk(): Promise<boolean> {
   const name = docStore.fileName ?? 'untitled.jff';
   const token = docStore.createRevisionToken();
   const saved = await saveAutomaton(fileService, docStore.automaton, name);
   if (saved) docStore.markSaved(token, name);
+  return saved;
 }
 
 async function saveFile() {

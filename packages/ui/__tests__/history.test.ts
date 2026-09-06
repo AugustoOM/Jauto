@@ -5,7 +5,10 @@ import { useDocumentStore } from '../src/stores/document';
 import { useHistoryStore } from '../src/stores/history';
 
 describe('document and command history integration', () => {
-  beforeEach(() => setActivePinia(createPinia()));
+  beforeEach(() => {
+    localStorage.clear();
+    setActivePinia(createPinia());
+  });
 
   it('adds, undoes and redoes a state in the visible document', () => {
     const doc = useDocumentStore();
@@ -40,5 +43,22 @@ describe('document and command history integration', () => {
     doc.newDocument('pda');
     expect(doc.markSaved(obsolete, 'wrong.jff')).toBe(false);
     expect(doc.fileName).toBeNull();
+  });
+
+  it('restores an unsaved recovery draft and exposes a Resume path', () => {
+    const first = useDocumentStore();
+    const history = useHistoryStore();
+    first.newDocument('fa');
+    history.dispatch(new AddStateCommand({ id: 'recovered', name: 'saved from crash', x: 1, y: 2, isInitial: true, isFinal: false }));
+
+    setActivePinia(createPinia());
+    const restored = useDocumentStore();
+    expect(restored.restoreRecoveryDraft()).toBe(true);
+    expect(restored.isDirty).toBe(true);
+    expect(restored.canResume).toBe(true);
+    expect(restored.currentView).toBe('home');
+    restored.resume();
+    expect(restored.currentView).toBe('editor');
+    expect(restored.automaton.states[0]?.name).toBe('saved from crash');
   });
 });

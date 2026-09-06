@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
+import { onBeforeUnmount } from 'vue';
+import { HomePage, EditorView, createBeforeUnloadHandler, runProtectedDocumentAction, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { WebFileService, openAutomaton } from '@jauto/file-io';
+import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
 import AppHeader from './AppHeader.vue';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
@@ -9,33 +10,62 @@ const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
 const simStore = useSimulationStore();
 const fileService = new WebFileService();
+docStore.restoreRecoveryDraft();
+const beforeUnload = createBeforeUnloadHandler(() => docStore.isDirty);
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
 
 useKeyboardShortcuts();
 
-function handleNew(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
+async function saveCurrentDocument(): Promise<boolean> {
+  try {
+    const name = docStore.fileName ?? 'untitled.jff';
+    const token = docStore.createRevisionToken();
+    const saved = await saveAutomaton(fileService, docStore.automaton, name);
+    if (saved) docStore.markSaved(token, name);
+    return saved;
+  } catch (error) {
+    alert(`Failed to save: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+async function handleNew(kind: AutomatonKind) {
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveCurrentDocument,
+    action: () => {
+      docStore.newDocument(kind);
+      historyStore.clear();
+      simStore.stop();
+    },
+  });
 }
 
 async function handleOpen() {
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await runProtectedDocumentAction({
+    isDirty: docStore.isDirty,
+    save: saveCurrentDocument,
+    action: async () => {
+      try {
+        const result = await openAutomaton(fileService);
+        if (result) {
+          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+          historyStore.clear();
+          simStore.stop();
+        }
+      } catch (err) {
+        alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+  });
 }
 </script>
 
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage @new="handleNew" @open="handleOpen" />
+      <HomePage :can-resume="docStore.canResume" @new="handleNew" @open="handleOpen" @resume="docStore.resume" />
     </template>
     <template v-else>
       <AppHeader />

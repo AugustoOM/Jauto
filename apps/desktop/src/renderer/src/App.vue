@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted, provide, watch } from 'vue';
+import { onBeforeUnmount, onMounted, provide, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import {
   HomePage,
   EditorView,
+  createBeforeUnloadHandler,
+  runProtectedDocumentAction,
   saveDocumentKey,
   useDocumentStore,
   useHistoryStore,
@@ -18,8 +20,12 @@ const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
 const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+docStore.restoreRecoveryDraft();
+const beforeUnload = createBeforeUnloadHandler(() => docStore.isDirty);
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
 
-async function saveCurrentDocument() {
+async function saveCurrentDocument(): Promise<boolean> {
   try {
     const name = docStore.fileName ?? 'untitled.jff';
     const token = docStore.createRevisionToken();
@@ -28,32 +34,42 @@ async function saveCurrentDocument() {
       docStore.markSaved(token, name);
       updateTitle();
     }
+    return saved;
   } catch (err) {
-    console.error('Failed to save:', err);
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
   }
 }
 
 provide(saveDocumentKey, saveCurrentDocument);
 
-function handleNew(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
-  updateTitle();
+async function replaceDocument(action: () => void | Promise<void>) {
+  return runProtectedDocumentAction({ isDirty: docStore.isDirty, save: saveCurrentDocument, action });
+}
+
+async function handleNew(kind: AutomatonKind) {
+  await replaceDocument(() => {
+    docStore.newDocument(kind);
+    historyStore.clear();
+    simStore.stop();
+    updateTitle();
+  });
 }
 
 async function handleOpen() {
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
-      historyStore.clear();
-      simStore.stop();
-      updateTitle();
+  await replaceDocument(async () => {
+    try {
+      const result = await openAutomaton(fileService);
+      if (result) {
+        docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+        historyStore.clear();
+        simStore.stop();
+        updateTitle();
+      }
+    } catch (err) {
+      window.alert(`Failed to open: ${err instanceof Error ? err.message : String(err)}`);
     }
-  } catch (err) {
-    window.alert(`Failed to open: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  });
 }
 
 onMounted(() => {
@@ -62,22 +78,13 @@ onMounted(() => {
 
     switch (command) {
       case 'menu:new-fa':
-        docStore.newDocument('fa');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
+        await handleNew('fa');
         break;
       case 'menu:new-pda':
-        docStore.newDocument('pda');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
+        await handleNew('pda');
         break;
       case 'menu:new-tm':
-        docStore.newDocument('turing');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
+        await handleNew('turing');
         break;
       case 'menu:open':
         await handleOpen();
@@ -129,7 +136,7 @@ function updateTitle() {
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage @new="handleNew" @open="handleOpen" />
+      <HomePage :can-resume="docStore.canResume" @new="handleNew" @open="handleOpen" @resume="docStore.resume" />
     </template>
     <template v-else>
       <DesktopAppHeader />

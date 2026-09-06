@@ -5,9 +5,12 @@ import { Workflow, Layers, Cpu, FolderOpen } from '@lucide/vue';
 import ThemeToggle from './ThemeToggle.vue';
 import logoFull from '../assets/logo.png';
 
+defineProps<{ canResume?: boolean }>();
+
 const emit = defineEmits<{
   (e: 'new', kind: AutomatonKind): void;
   (e: 'open'): void;
+  (e: 'resume'): void;
 }>();
 
 const automatonTypes: { kind: AutomatonKind; title: string; description: string; icon: Component }[] = [
@@ -70,6 +73,12 @@ const automatonTypes: { kind: AutomatonKind; title: string; description: string;
       </div>
 
       <section class="home__section">
+        <button v-if="canResume" class="home__open-btn" @click="emit('resume')">
+          <span class="home__open-body">
+            <span class="home__open-title">Resume current document</span>
+            <span class="home__open-desc">Return without replacing your work</span>
+          </span>
+        </button>
         <button class="home__open-btn" @click="emit('open')">
           <span class="home__open-icon">
             <FolderOpen :size="24" />
