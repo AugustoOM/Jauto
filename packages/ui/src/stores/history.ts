@@ -25,6 +25,7 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   function undo() {
+    document.flushInspectorEdits();
     const result = history.undo(document.automaton);
     if (result) {
       const revisions = undoRevisions.pop();
@@ -36,6 +37,7 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   function redo() {
+    document.flushInspectorEdits();
     const result = history.redo(document.automaton);
     if (result) {
       const revisions = redoRevisions.pop();

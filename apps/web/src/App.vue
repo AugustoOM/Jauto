@@ -19,6 +19,7 @@ useKeyboardShortcuts();
 
 async function saveCurrentDocument(): Promise<boolean> {
   try {
+    docStore.flushInspectorEdits();
     const name = docStore.fileName ?? 'untitled.jff';
     const token = docStore.createRevisionToken();
     const result = await saveAutomaton(fileService, docStore.automaton, name);
@@ -31,6 +32,7 @@ async function saveCurrentDocument(): Promise<boolean> {
 }
 
 async function handleNew(kind: AutomatonKind) {
+  docStore.flushInspectorEdits();
   await runProtectedDocumentAction({
     isDirty: docStore.isDirty,
     save: saveCurrentDocument,
@@ -43,6 +45,7 @@ async function handleNew(kind: AutomatonKind) {
 }
 
 async function handleOpen() {
+  docStore.flushInspectorEdits();
   await runProtectedDocumentAction({
     isDirty: docStore.isDirty,
     save: saveCurrentDocument,

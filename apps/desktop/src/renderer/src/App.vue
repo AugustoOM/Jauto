@@ -27,6 +27,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
 
 async function saveCurrentDocument(): Promise<boolean> {
   try {
+    docStore.flushInspectorEdits();
     const name = docStore.fileName ?? 'untitled.jff';
     const token = docStore.createRevisionToken();
     const result = await saveAutomaton(fileService, docStore.automaton, name, docStore.filePath ?? undefined);
@@ -48,6 +49,7 @@ async function replaceDocument(action: () => void | Promise<void>) {
 }
 
 async function handleNew(kind: AutomatonKind) {
+  docStore.flushInspectorEdits();
   await replaceDocument(() => {
     docStore.newDocument(kind);
     historyStore.clear();
@@ -57,6 +59,7 @@ async function handleNew(kind: AutomatonKind) {
 }
 
 async function handleOpen() {
+  docStore.flushInspectorEdits();
   await replaceDocument(async () => {
     try {
       const result = await openAutomaton(fileService);

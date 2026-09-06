@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Check } from '@lucide/vue';
 import { useDocumentStore } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
@@ -183,6 +183,9 @@ function applyChanges() {
   if (hasPendingStateEdits.value) applyStateEdits();
   else if (hasPendingTransitionEdits.value) applyTransitionEdits();
 }
+
+docStore.registerInspectorCommitter(applyChanges);
+onBeforeUnmount(() => docStore.registerInspectorCommitter(null));
 
 const transitionFields = computed(() => {
   const t = selectedTransition.value;

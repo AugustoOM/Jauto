@@ -39,6 +39,7 @@ export const useDocumentStore = defineStore('document', () => {
   let inspectorFocusNonce = 0;
   let nextDocumentId = 0;
   let nextRevision = 0;
+  let inspectorCommitter: (() => void) | null = null;
 
   const automatonKind = computed<AutomatonKind>(() => automaton.value.kind);
   const isDirty = computed(() => revision.value !== savedRevision.value);
@@ -138,7 +139,16 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function select(element: SelectedElement) {
+    flushInspectorEdits();
     selectedElement.value = element;
+  }
+
+  function registerInspectorCommitter(committer: (() => void) | null) {
+    inspectorCommitter = committer;
+  }
+
+  function flushInspectorEdits() {
+    inspectorCommitter?.();
   }
 
   function requestInspectorFocus(target: InspectorFocusRequest) {
@@ -150,6 +160,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function clearSelection() {
+    flushInspectorEdits();
     selectedElement.value = null;
     inspectorFocusTarget.value = null;
   }
@@ -206,6 +217,8 @@ export const useDocumentStore = defineStore('document', () => {
     clearRecoveryDraft,
     rename,
     select,
+    registerInspectorCommitter,
+    flushInspectorEdits,
     requestInspectorFocus,
     clearSelection,
     setTool,

@@ -7,6 +7,7 @@ const docStore = useDocumentStore();
 const sim = useSimulationStore();
 
 function handleStart() {
+  docStore.flushInspectorEdits();
   sim.start(docStore.automaton);
 }
 

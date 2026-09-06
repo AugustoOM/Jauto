@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { AddStateCommand, createEmptyAutomaton } from '@jauto/core';
 import { useDocumentStore } from '../src/stores/document';
@@ -70,5 +70,13 @@ describe('document and command history integration', () => {
     expect(doc.markSaved(token, 'chosen.jff', 'D:/exports/chosen.jff')).toBe(true);
     expect(doc.fileName).toBe('chosen.jff');
     expect(doc.filePath).toBe('D:/exports/chosen.jff');
+  });
+
+  it('flushes a registered inspector draft before changing selection', () => {
+    const doc = useDocumentStore();
+    const flush = vi.fn();
+    doc.registerInspectorCommitter(flush);
+    doc.select({ type: 'state', id: 'q0' });
+    expect(flush).toHaveBeenCalledOnce();
   });
 });

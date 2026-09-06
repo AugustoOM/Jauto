@@ -41,6 +41,7 @@ async function goHome() {
 
 async function newDocument(kind: AutomatonKind) {
   closeMenu();
+  docStore.flushInspectorEdits();
   await runProtectedDocumentAction({
     isDirty: docStore.isDirty,
     save: saveForLifecycle,
@@ -54,6 +55,7 @@ async function newDocument(kind: AutomatonKind) {
 
 async function openFile() {
   closeMenu();
+  docStore.flushInspectorEdits();
   await runProtectedDocumentAction({
     isDirty: docStore.isDirty,
     save: saveForLifecycle,
@@ -73,6 +75,7 @@ async function openFile() {
 }
 
 async function persistToDisk(_saveAs = false): Promise<boolean> {
+  docStore.flushInspectorEdits();
   const name = docStore.fileName ?? 'untitled.jff';
   const token = docStore.createRevisionToken();
   const result = await saveAutomaton(fileService, docStore.automaton, name);
