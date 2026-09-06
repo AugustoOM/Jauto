@@ -152,7 +152,7 @@ export function useInteractionManager(
     const { x, y } = toWorld(e, canvasRect);
 
     if (isDragging.value && dragStateId.value) {
-      docStore.setAutomaton(
+      docStore.previewAutomaton(
         updateState(docStore.automaton, dragStateId.value, { x, y }) as AnyAutomaton,
       );
     }
@@ -171,7 +171,7 @@ export function useInteractionManager(
         const finalX = current.x;
         const finalY = current.y;
 
-        docStore.setAutomaton(
+        docStore.previewAutomaton(
           updateState(docStore.automaton, stateId, {
             x: dragStartX.value,
             y: dragStartY.value,

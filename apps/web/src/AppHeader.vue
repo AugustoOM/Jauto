@@ -53,8 +53,9 @@ async function openFile() {
 
 async function persistToDisk() {
   const name = docStore.fileName ?? 'untitled.jff';
-  await saveAutomaton(fileService, docStore.automaton, name);
-  docStore.markSaved(name);
+  const token = docStore.createRevisionToken();
+  const saved = await saveAutomaton(fileService, docStore.automaton, name);
+  if (saved) docStore.markSaved(token, name);
 }
 
 async function saveFile() {

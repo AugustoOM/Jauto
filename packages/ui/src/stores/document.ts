@@ -17,30 +17,57 @@ export type InspectorFocusRequest =
   | { type: 'state'; field: 'name' }
   | { type: 'transition'; field: string };
 
+export interface DocumentRevisionToken {
+  readonly documentId: number;
+  readonly revision: number;
+}
+
 export const useDocumentStore = defineStore('document', () => {
   const currentView = ref<AppView>('home');
   const automaton = ref<AnyAutomaton>(createEmptyAutomaton('fa'));
   const fileName = ref<string | null>(null);
-  const isDirty = ref(false);
+  const documentId = ref(0);
+  const revision = ref(0);
+  const savedRevision = ref(0);
   const importWarnings = ref<readonly { message: string }[]>([]);
   const selectedElement = ref<SelectedElement>(null);
   const inspectorFocusTarget = ref<InspectorFocusTarget | null>(null);
   const activeTool = ref<EditorTool>('select');
   const heldModifier = ref<'shift' | 'ctrl' | null>(null);
   let inspectorFocusNonce = 0;
+  let nextDocumentId = 0;
+  let nextRevision = 0;
 
   const automatonKind = computed<AutomatonKind>(() => automaton.value.kind);
+  const isDirty = computed(() => revision.value !== savedRevision.value);
 
-  function setAutomaton(newAutomaton: AnyAutomaton) {
+  function setAutomaton(newAutomaton: AnyAutomaton): number {
     automaton.value = newAutomaton;
-    isDirty.value = true;
+    revision.value = ++nextRevision;
+    return revision.value;
+  }
+
+  function restoreAutomaton(newAutomaton: AnyAutomaton, restoredRevision: number) {
+    automaton.value = newAutomaton;
+    revision.value = restoredRevision;
+  }
+
+  function previewAutomaton(newAutomaton: AnyAutomaton) {
+    automaton.value = newAutomaton;
+  }
+
+  function resetIdentity() {
+    documentId.value = ++nextDocumentId;
+    revision.value = 0;
+    savedRevision.value = 0;
+    nextRevision = 0;
   }
 
   function loadAutomaton(newAutomaton: AnyAutomaton, name: string | null = null, warnings: readonly { message: string }[] = []) {
     importWarnings.value = warnings;
     automaton.value = newAutomaton;
     fileName.value = name;
-    isDirty.value = false;
+    resetIdentity();
     selectedElement.value = null;
     currentView.value = 'editor';
   }
@@ -49,7 +76,7 @@ export const useDocumentStore = defineStore('document', () => {
     importWarnings.value = [];
     automaton.value = createEmptyAutomaton(kind);
     fileName.value = null;
-    isDirty.value = false;
+    resetIdentity();
     selectedElement.value = null;
     currentView.value = 'editor';
   }
@@ -86,15 +113,24 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  function markSaved(name?: string) {
-    isDirty.value = false;
+  function createRevisionToken(): DocumentRevisionToken {
+    return { documentId: documentId.value, revision: revision.value };
+  }
+
+  function markSaved(token: DocumentRevisionToken, name?: string): boolean {
+    if (token.documentId !== documentId.value) return false;
+    savedRevision.value = token.revision;
     if (name) fileName.value = name;
+    return true;
   }
 
   return {
     currentView,
     automaton,
     fileName,
+    documentId,
+    revision,
+    savedRevision,
     isDirty,
     importWarnings,
     selectedElement,
@@ -103,6 +139,8 @@ export const useDocumentStore = defineStore('document', () => {
     heldModifier,
     automatonKind,
     setAutomaton,
+    restoreAutomaton,
+    previewAutomaton,
     loadAutomaton,
     newDocument,
     goHome,
@@ -112,5 +150,6 @@ export const useDocumentStore = defineStore('document', () => {
     clearSelection,
     setTool,
     markSaved,
+    createRevisionToken,
   };
 });

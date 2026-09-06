@@ -22,9 +22,10 @@ const fileService = new DesktopFileService();
 async function saveCurrentDocument() {
   try {
     const name = docStore.fileName ?? 'untitled.jff';
+    const token = docStore.createRevisionToken();
     const saved = await saveAutomaton(fileService, docStore.automaton, name);
     if (saved) {
-      docStore.markSaved(name);
+      docStore.markSaved(token, name);
       updateTitle();
     }
   } catch (err) {

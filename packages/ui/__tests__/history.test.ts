@@ -15,10 +15,30 @@ describe('document and command history integration', () => {
     expect(doc.automaton.states).toHaveLength(1);
     expect(doc.isDirty).toBe(true);
     expect(history.canUndo).toBe(true);
+    const savedToken = doc.createRevisionToken();
+    expect(doc.markSaved(savedToken, 'example.jff')).toBe(true);
+    expect(doc.isDirty).toBe(false);
     history.undo();
     expect(doc.automaton.states).toHaveLength(0);
     expect(history.canRedo).toBe(true);
+    expect(doc.isDirty).toBe(true);
     history.redo();
     expect(doc.automaton.states[0]?.name).toBe('q0');
+    expect(doc.isDirty).toBe(false);
+  });
+
+  it('does not clear newer edits or a replacement document after an asynchronous save', () => {
+    const doc = useDocumentStore();
+    const history = useHistoryStore();
+    doc.newDocument('fa');
+    const saving = doc.createRevisionToken();
+    history.dispatch(new AddStateCommand({ id: 'newer', name: 'q0', x: 0, y: 0, isInitial: true, isFinal: false }));
+    expect(doc.markSaved(saving, 'old.jff')).toBe(true);
+    expect(doc.isDirty).toBe(true);
+
+    const obsolete = doc.createRevisionToken();
+    doc.newDocument('pda');
+    expect(doc.markSaved(obsolete, 'wrong.jff')).toBe(false);
+    expect(doc.fileName).toBeNull();
   });
 });

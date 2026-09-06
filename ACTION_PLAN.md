@@ -107,8 +107,8 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Centralize keyboard handling with editable-target, focus, modifier, and IME guards.
 - [ ] Add a shared document lifecycle for New/Open/Home/Close with Save/Discard/Cancel behavior.
 - [ ] Add recoverable drafts, reload/close protection, and a Resume path from Home.
-- [ ] Track document identity, current revision, and saved revision rather than a manually toggled dirty flag.
-- [ ] Bind asynchronous save completion to the document revision actually saved.
+- [x] Track document identity, current revision, and saved revision rather than a manually toggled dirty flag.
+- [x] Bind asynchronous save completion to the document revision actually saved.
 - [ ] Preserve desktop paths and actual chosen filenames; distinguish Save from Save As.
 - [ ] Handle cancellation, false save results, and errors without clearing unsaved state.
 - [ ] Display actionable open/save/export errors instead of relying on console output.
@@ -250,5 +250,6 @@ Before calling the automata milestone dependable:
 - Bounded simulation outcomes: added an explicit `step-limit` run outcome, preserved the current configuration for zero-step runs, and removed the shared `run(0)` crash from all four runners. Validation: 30 simulator tests passed; workspace type checks and lint passed.
 - Vendor conformance corpus: retained official JFLAP NFA, PDA, and TM examples with provenance and independent language expectations; added execution and graph-preservation checks. A four-state Jauto export with colliding-style internal IDs was reopened successfully by JFLAP 7.1's own XML decoder. Validation: 44 JFF tests passed; JFLAP returned `automata.fsa.FiniteStateAutomaton` for the generated export.
 - Transition-semantics regressions: implemented complete FA/PDA string reads, prefix-aware NFA branching, PDA stack-string operations with JFLAP's initial `Z`, and idempotent initial acceptance. Added regressions for string labels, epsilon cycles, nondeterminism, malformed documents, zero-step/resource limits, and vendor PDA languages. Validation: 41 core, 35 simulator, 11 UI, and 46 JFF tests passed; workspace type checks and lint passed.
+- Revision-based document state: replaced the manual dirty flag with document identity plus current/saved revisions, preserved revisions across undo/redo, kept drag previews outside history, and bound asynchronous save completion to the captured document revision. Validation: 12 UI tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
