@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { AddStateCommand, createEmptyAutomaton } from '@jauto/core';
 import { useDocumentStore } from '../src/stores/document';
 import { useHistoryStore } from '../src/stores/history';
+import { useInteractionManager } from '../src/composables/useInteractionManager';
 
 describe('document and command history integration', () => {
   beforeEach(() => {
@@ -78,5 +79,33 @@ describe('document and command history integration', () => {
     doc.registerInspectorCommitter(flush);
     doc.select({ type: 'state', id: 'q0' });
     expect(flush).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the pointer offset, restores canceled previews, and commits one drag command', () => {
+    const doc = useDocumentStore();
+    const history = useHistoryStore();
+    doc.loadAutomaton({
+      kind: 'fa',
+      states: [{ id: 'q0', name: 'q0', x: 10, y: 20, isInitial: true, isFinal: false }],
+      transitions: [],
+    });
+    const interaction = useInteractionManager((x, y) => ({ x, y }));
+    const rect = { left: 0, top: 0 } as DOMRect;
+    const pointer = (clientX: number, clientY: number) => ({ clientX, clientY, button: 0, shiftKey: false }) as PointerEvent;
+
+    interaction.onPointerDown(pointer(15, 25), rect);
+    interaction.onPointerMove(pointer(50, 70), rect);
+    expect(doc.automaton.states[0]).toMatchObject({ x: 45, y: 65 });
+    interaction.cancelGesture();
+    expect(doc.automaton.states[0]).toMatchObject({ x: 10, y: 20 });
+    expect(history.canUndo).toBe(false);
+
+    interaction.onPointerDown(pointer(15, 25), rect);
+    interaction.onPointerMove(pointer(50, 70), rect);
+    interaction.onPointerUp(pointer(50, 70), rect);
+    expect(doc.automaton.states[0]).toMatchObject({ x: 45, y: 65 });
+    history.undo();
+    expect(doc.automaton.states[0]).toMatchObject({ x: 10, y: 20 });
+    expect(history.canUndo).toBe(false);
   });
 });

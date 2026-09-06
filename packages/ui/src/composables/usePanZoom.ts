@@ -49,7 +49,7 @@ export function usePanZoom() {
     offsetY.value -= dy;
   }
 
-  function onPanStart(e: MouseEvent, opts?: { fromPrimaryWithSpace?: boolean }) {
+  function onPanStart(e: PointerEvent, opts?: { fromPrimaryWithSpace?: boolean }) {
     if (opts?.fromPrimaryWithSpace) {
       isPanning = true;
       lastX = e.clientX;
@@ -66,7 +66,7 @@ export function usePanZoom() {
     }
   }
 
-  function onPanMove(e: MouseEvent) {
+  function onPanMove(e: PointerEvent) {
     if (!isPanning) return;
     offsetX.value += e.clientX - lastX;
     offsetY.value += e.clientY - lastY;

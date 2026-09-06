@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 import { useCanvasRenderer, readCssVar } from '../composables/useCanvasRenderer';
@@ -72,8 +72,9 @@ function getCanvasRect(): DOMRect {
   return canvasRef.value!.getBoundingClientRect();
 }
 
-function handleMouseDown(e: MouseEvent) {
-  const pointerType = (e as PointerEvent).pointerType;
+function handlePointerDown(e: PointerEvent) {
+  const pointerType = e.pointerType;
+  canvasRef.value?.setPointerCapture(e.pointerId);
   if (spaceHeldForPan.value && e.button === 0) {
     panZoom.onPanStart(e, { fromPrimaryWithSpace: true });
     return;
@@ -82,17 +83,23 @@ function handleMouseDown(e: MouseEvent) {
     panZoom.onPanStart(e);
     return;
   }
-  interaction.onMouseDown(e, getCanvasRect());
+  interaction.onPointerDown(e, getCanvasRect());
 }
 
-function handleMouseMove(e: MouseEvent) {
+function handlePointerMove(e: PointerEvent) {
   panZoom.onPanMove(e);
-  interaction.onMouseMove(e, getCanvasRect());
+  interaction.onPointerMove(e, getCanvasRect());
 }
 
-function handleMouseUp(e: MouseEvent) {
+function handlePointerUp(e: PointerEvent) {
   panZoom.onPanEnd();
-  interaction.onMouseUp(e, getCanvasRect());
+  interaction.onPointerUp(e, getCanvasRect());
+  if (canvasRef.value?.hasPointerCapture(e.pointerId)) canvasRef.value.releasePointerCapture(e.pointerId);
+}
+
+function cancelPointerGesture() {
+  panZoom.onPanEnd();
+  interaction.cancelGesture();
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -121,8 +128,10 @@ function updateModifier(e: KeyboardEvent) {
 function handleWindowBlur() {
   docStore.heldModifier = null;
   spaceHeldForPan.value = false;
-  panZoom.onPanEnd();
+  cancelPointerGesture();
 }
+
+watch(() => docStore.documentId, cancelPointerGesture);
 
 onMounted(() => {
   resize();
@@ -151,9 +160,11 @@ defineExpose({ panZoom });
     ref="canvasRef"
     class="automaton-canvas"
     :class="{ 'automaton-canvas--space-pan': spaceHeldForPan }"
-    @mousedown="handleMouseDown"
-    @mousemove="handleMouseMove"
-    @mouseup="handleMouseUp"
+    @pointerdown="handlePointerDown"
+    @pointermove="handlePointerMove"
+    @pointerup="handlePointerUp"
+    @pointercancel="cancelPointerGesture"
+    @lostpointercapture="cancelPointerGesture"
     @wheel="panZoom.onWheel"
     @contextmenu.prevent
   />
@@ -165,6 +176,7 @@ defineExpose({ panZoom });
   width: 100%;
   height: 100%;
   cursor: default;
+  touch-action: none;
 }
 
 .automaton-canvas--space-pan {
