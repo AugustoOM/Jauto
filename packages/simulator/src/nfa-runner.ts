@@ -6,6 +6,8 @@ import { validateRunBudget } from './run-budget';
 interface Branch {
   state: string;
   inputIndex: number;
+  transitionId?: string;
+  path: string[];
 }
 
 export function createNFARunner(
@@ -19,25 +21,27 @@ export function createNFARunner(
     return `${branch.state}\u0000${branch.inputIndex}`;
   }
 
-  function epsilonClosure(seed: readonly Branch[]): Branch[] {
+  function epsilonClosure(seed: readonly Branch[], executed?: Set<string>): Branch[] {
     const closure = new Map(seed.map((branch) => [branchKey(branch), branch]));
     const queue = [...seed];
     while (queue.length > 0) {
       const current = queue.shift()!;
       for (const transition of automaton.transitions) {
         if (transition.from !== current.state || transition.read !== '') continue;
-        const next = { state: transition.to, inputIndex: current.inputIndex };
+        const next = { state: transition.to, inputIndex: current.inputIndex, transitionId: transition.id, path: [...current.path, transition.id] };
         const key = branchKey(next);
         if (!closure.has(key)) {
           closure.set(key, next);
           queue.push(next);
+          executed?.add(transition.id);
         }
       }
     }
     return [...closure.values()];
   }
 
-  const initialBranches = epsilonClosure([{ state: initialState.id, inputIndex: 0 }]);
+  const initialTransitionIds = new Set<string>();
+  const initialBranches = epsilonClosure([{ state: initialState.id, inputIndex: 0, path: [] }], initialTransitionIds);
   let branches = initialBranches;
   let stepIndex = 0;
   let canceled = false;
@@ -77,10 +81,11 @@ export function createNFARunner(
   function step(): StepResult<NFAConfig> {
     const currentStatus = getStatus();
     if (currentStatus !== 'running') {
-      return { config: toPublicConfig(), status: currentStatus, stepIndex };
+      return snapshot();
     }
 
     const next = new Map<string, Branch>();
+    const executed = new Set<string>();
     for (const branch of branches) {
       for (const transition of automaton.transitions) {
         if (
@@ -91,14 +96,36 @@ export function createNFARunner(
           const candidate = {
             state: transition.to,
             inputIndex: branch.inputIndex + transition.read.length,
+            transitionId: transition.id,
+            path: [...branch.path, transition.id],
           };
-          next.set(branchKey(candidate), candidate);
+          if (!next.has(branchKey(candidate))) next.set(branchKey(candidate), candidate);
+          executed.add(transition.id);
         }
       }
     }
-    branches = epsilonClosure([...next.values()]);
+    branches = epsilonClosure([...next.values()], executed);
     stepIndex++;
-    return { config: toPublicConfig(), status: getStatus(), stepIndex };
+    return snapshot([...executed]);
+  }
+
+  function snapshot(transitionIds: readonly string[] = []): StepResult<NFAConfig> {
+    const config = toPublicConfig();
+    const status = getStatus();
+    const accepting = branches.find(isAccepting);
+    return {
+      config,
+      configurations: branches.map((branch) => ({
+        id: branchKey(branch),
+        config: { activeStates: new Set([branch.state]), remainingInput: input.slice(branch.inputIndex), inputIndex: branch.inputIndex },
+        transitionId: branch.transitionId,
+        path: branch.path,
+      })),
+      transitionIds,
+      acceptingPath: status === 'accepted' ? accepting?.path : undefined,
+      status,
+      stepIndex,
+    };
   }
 
   function run(maxSteps = 10000): RunResult<NFAConfig> {
@@ -115,7 +142,7 @@ export function createNFARunner(
   }
 
   function reset() {
-    branches = initialBranches;
+    branches = initialBranches.map((branch) => ({ ...branch, path: [...branch.path] }));
     stepIndex = 0;
     canceled = false;
   }
@@ -130,5 +157,6 @@ export function createNFARunner(
     get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return toPublicConfig(); },
+    get currentStep() { return snapshot(stepIndex === 0 ? [...initialTransitionIds] : []); },
   };
 }

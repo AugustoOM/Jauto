@@ -45,6 +45,8 @@ export function createTMRunner(
   let haltReason: 'final-state' | 'no-transition' | null =
     initialIsFinal && acceptByFinalState ? 'final-state' : null;
   let canceled = false;
+  let path: string[] = [];
+  let lastTransitionId: string | undefined;
 
   function readTape(): string {
     if (headPosition < 0 || headPosition >= tape.length) return BLANK;
@@ -78,7 +80,7 @@ export function createTMRunner(
 
   function step(): StepResult<TMConfig> {
     if (getStatus() !== 'running') {
-      return { config: getConfig(), status: getStatus(), stepIndex: stepCount };
+      return snapshot();
     }
 
     const currentSymbol = readTape();
@@ -91,7 +93,7 @@ export function createTMRunner(
 
     if (!transition) {
       haltReason = 'no-transition';
-      return { config: getConfig(), status: getStatus(), stepIndex: stepCount };
+      return snapshot();
     }
 
     writeTape(transition.write || BLANK);
@@ -109,13 +111,28 @@ export function createTMRunner(
     }
 
     stepCount++;
+    path = [...path, transition.id];
+    lastTransitionId = transition.id;
 
     const state = automaton.states.find((s) => s.id === currentState);
     if (state?.isFinal && acceptByFinalState) {
       haltReason = 'final-state';
     }
 
-    return { config: getConfig(), status: getStatus(), stepIndex: stepCount };
+    return snapshot([transition.id]);
+  }
+
+  function snapshot(transitionIds: readonly string[] = []): StepResult<TMConfig> {
+    const config = getConfig();
+    const status = getStatus();
+    return {
+      config,
+      configurations: [{ id: `${currentState}\u0000${headPosition}\u0000${stepCount}`, config, transitionId: lastTransitionId, path }],
+      transitionIds,
+      acceptingPath: status === 'accepted' ? path : undefined,
+      status,
+      stepIndex: stepCount,
+    };
   }
 
   function run(maxSteps = 10000): RunResult<TMConfig> {
@@ -138,6 +155,8 @@ export function createTMRunner(
     stepCount = 0;
     haltReason = initialIsFinal && acceptByFinalState ? 'final-state' : null;
     canceled = false;
+    path = [];
+    lastTransitionId = undefined;
   }
 
   function cancel() { canceled = true; }
@@ -150,5 +169,6 @@ export function createTMRunner(
     get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return getConfig(); },
+    get currentStep() { return snapshot(); },
   };
 }

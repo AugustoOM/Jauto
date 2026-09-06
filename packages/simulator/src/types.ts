@@ -2,8 +2,23 @@ export type SimulationStatus = 'running' | 'accepted' | 'rejected' | 'halted' | 
 export type SimulationRunOutcome = Exclude<SimulationStatus, 'running'>;
 export type SimulationIncompleteReason = 'step-limit' | 'configuration-limit';
 
+export interface SimulationBranch<TConfig> {
+  /** Stable identity for this configuration within a trace. */
+  id: string;
+  config: TConfig;
+  /** Transition used to create this configuration in the current step. */
+  transitionId?: string;
+  /** Complete transition path from the initial configuration. */
+  path: readonly string[];
+}
+
 export interface StepResult<TConfig> {
   config: TConfig;
+  configurations: readonly SimulationBranch<TConfig>[];
+  /** Exact transitions executed while producing this snapshot. */
+  transitionIds: readonly string[];
+  /** One complete accepting witness, when the snapshot is accepting. */
+  acceptingPath?: readonly string[];
   status: SimulationStatus;
   stepIndex: number;
 }
@@ -24,6 +39,7 @@ export interface SimulationRunner<TConfig> {
   readonly isHalted: boolean;
   readonly isAccepted: boolean;
   readonly currentConfig: TConfig;
+  readonly currentStep: StepResult<TConfig>;
 }
 
 export class UnsupportedSimulationError extends Error {

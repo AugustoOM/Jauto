@@ -19,6 +19,8 @@ export function createDFARunner(
   let stepIndex = 0;
   let halted = false;
   let canceled = false;
+  let path: string[] = [];
+  let lastTransitionId: string | undefined;
 
   function getStatus(): SimulationStatus {
     if (canceled) return 'canceled';
@@ -31,7 +33,7 @@ export function createDFARunner(
 
   function step(): StepResult<DFAConfig> {
     if (getStatus() !== 'running') {
-      return { config, status: getStatus(), stepIndex };
+      return snapshot();
     }
 
     const transition = automaton.transitions.find(
@@ -40,7 +42,7 @@ export function createDFARunner(
 
     if (!transition) {
       halted = true;
-      return { config, status: 'rejected', stepIndex };
+      return snapshot();
     }
 
     config = {
@@ -48,8 +50,22 @@ export function createDFARunner(
       remainingInput: config.remainingInput.slice(transition.read.length),
       inputIndex: config.inputIndex + transition.read.length,
     };
+    path = [...path, transition.id];
+    lastTransitionId = transition.id;
     stepIndex++;
-    return { config, status: getStatus(), stepIndex };
+    return snapshot([transition.id]);
+  }
+
+  function snapshot(transitionIds: readonly string[] = []): StepResult<DFAConfig> {
+    const status = getStatus();
+    return {
+      config,
+      configurations: [{ id: `${config.currentState}\u0000${config.inputIndex}`, config, transitionId: lastTransitionId, path }],
+      transitionIds,
+      acceptingPath: status === 'accepted' ? path : undefined,
+      status,
+      stepIndex,
+    };
   }
 
   function run(maxSteps = 10000): RunResult<DFAConfig> {
@@ -70,6 +86,8 @@ export function createDFARunner(
     stepIndex = 0;
     halted = false;
     canceled = false;
+    path = [];
+    lastTransitionId = undefined;
   }
 
   function cancel() { canceled = true; }
@@ -82,5 +100,6 @@ export function createDFARunner(
     get isHalted() { return canceled || halted || config.remainingInput.length === 0; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return config; },
+    get currentStep() { return snapshot(); },
   };
 }

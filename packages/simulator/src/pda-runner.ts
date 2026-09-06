@@ -8,6 +8,8 @@ interface PDAConfiguration {
   remaining: string;
   inputIndex: number;
   stack: string[];
+  transitionId?: string;
+  path: string[];
 }
 
 const MAX_CONFIGS = 1000;
@@ -21,7 +23,7 @@ export function createPDARunner(
   const initialId = initialState.id;
 
   let configs: PDAConfiguration[] = [
-    { state: initialId, remaining: input, inputIndex: 0, stack: ['Z'] },
+    { state: initialId, remaining: input, inputIndex: 0, stack: ['Z'], path: [] },
   ];
   let stepIndex = 0;
   let accepted = false;
@@ -83,10 +85,11 @@ export function createPDARunner(
   function step(): StepResult<PDAConfig> {
     const currentStatus = getStatus();
     if (currentStatus !== 'running') {
-      return { config: toPublicConfig(), status: currentStatus, stepIndex };
+      return snapshot();
     }
 
     const nextConfigs = new Map<string, PDAConfiguration>();
+    const executed = new Set<string>();
 
     for (const c of configs) {
       for (const t of automaton.transitions) {
@@ -110,11 +113,14 @@ export function createPDARunner(
             remaining: c.remaining.slice(consumed),
             inputIndex: c.inputIndex + consumed,
             stack: newStack,
+            transitionId: t.id,
+            path: [...c.path, t.id],
           };
-          nextConfigs.set(configurationKey(next), next);
+          if (!nextConfigs.has(configurationKey(next))) nextConfigs.set(configurationKey(next), next);
+          executed.add(t.id);
           if (nextConfigs.size > MAX_CONFIGS) {
             configurationLimitReached = true;
-            return { config: toPublicConfig(), status: 'incomplete', stepIndex };
+            return snapshot([...executed]);
           }
         }
       }
@@ -133,7 +139,25 @@ export function createPDARunner(
       }
     }
 
-    return { config: toPublicConfig(), status: getStatus(), stepIndex };
+    return snapshot([...executed]);
+  }
+
+  function toBranchConfig(config: PDAConfiguration): PDAConfig {
+    return { currentState: config.state, remainingInput: config.remaining, inputIndex: config.inputIndex, stack: [...config.stack] };
+  }
+
+  function snapshot(transitionIds: readonly string[] = []): StepResult<PDAConfig> {
+    const config = toPublicConfig();
+    const status = getStatus();
+    const accepting = configs.find((candidate) => candidate.remaining.length === 0 && automaton.states.some((state) => state.id === candidate.state && state.isFinal));
+    return {
+      config,
+      configurations: configs.map((candidate) => ({ id: configurationKey(candidate), config: toBranchConfig(candidate), transitionId: candidate.transitionId, path: candidate.path })),
+      transitionIds,
+      acceptingPath: status === 'accepted' ? accepting?.path : undefined,
+      status,
+      stepIndex,
+    };
   }
 
   function run(maxSteps = 10000): RunResult<PDAConfig> {
@@ -153,7 +177,7 @@ export function createPDARunner(
   }
 
   function reset() {
-    configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: ['Z'] }];
+    configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: ['Z'], path: [] }];
     stepIndex = 0;
     accepted = false;
     configurationLimitReached = false;
@@ -170,5 +194,6 @@ export function createPDARunner(
     get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return accepted || getStatus() === 'accepted'; },
     get currentConfig() { return toPublicConfig(); },
+    get currentStep() { return snapshot(); },
   };
 }

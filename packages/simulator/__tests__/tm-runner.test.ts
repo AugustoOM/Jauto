@@ -96,4 +96,12 @@ describe('TM Runner', () => {
     );
     expect(() => createTMRunner(multipleSymbols, 'ab')).toThrow('one tape symbol');
   });
+
+  it('includes the initial tape snapshot and exact transition path', () => {
+    const runner = createTMRunner(tm, '01');
+    expect(runner.currentStep.configurations[0]?.config.tape).toEqual(['0', '1']);
+    expect(runner.currentStep.transitionIds).toEqual([]);
+    expect(runner.step().transitionIds).toEqual(['t0']);
+    expect(runner.step().configurations[0]?.path).toEqual(['t0', 't1']);
+  });
 });

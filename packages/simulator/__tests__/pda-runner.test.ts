@@ -93,4 +93,16 @@ describe('PDA Runner', () => {
     expect(createPDARunner(stringPda, 'abcd').run().outcome).toBe('accepted');
     expect(createPDARunner(stringPda, 'abd').run().outcome).toBe('rejected');
   });
+
+  it('retains every active stack configuration and its transition path', () => {
+    const branching = buildPDA(
+      [s('0', { isInitial: true }), s('1', { isFinal: true }), s('2')],
+      [t('accept', '0', '1', 'a', '', 'A'), t('other', '0', '2', 'a', '', 'B')],
+    );
+    const result = createPDARunner(branching, 'a').step();
+
+    expect(result.transitionIds).toEqual(['accept', 'other']);
+    expect(result.configurations.map((branch) => branch.config.stack)).toEqual([['Z', 'A'], ['Z', 'B']]);
+    expect(result.acceptingPath).toEqual(['accept']);
+  });
 });
