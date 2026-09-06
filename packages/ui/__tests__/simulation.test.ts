@@ -98,4 +98,18 @@ describe('simulation store finite-automaton routing', () => {
     expect(simulation.status).toBe('invalid');
     expect(simulation.errorMessage).toContain('machine changed');
   });
+
+  it('tests multiple inputs and preserves distinct outcomes', () => {
+    const simulation = useSimulationStore();
+    const automaton = finiteAutomaton([
+      { id: 'first', from: 'q0', to: 'q1', read: 'a' },
+      { id: 'second', from: 'q1', to: 'q2', read: 'b' },
+    ]);
+    simulation.batchInput = 'ab\na\n';
+    simulation.runBatch(automaton);
+
+    expect(simulation.batchResults.map((result) => [result.input, result.outcome])).toEqual([
+      ['ab', 'accepted'], ['a', 'rejected'], ['', 'rejected'],
+    ]);
+  });
 });

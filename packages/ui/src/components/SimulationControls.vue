@@ -156,6 +156,20 @@ function remainingText(config: Record<string, unknown>): string {
       />
       <span class="sim-controls__speed-val">{{ sim.speed }}ms</span>
     </div>
+    <details v-if="!sim.isActive" class="sim-controls__batch">
+      <summary>Batch input testing</summary>
+      <label class="sim-controls__label" for="batch-inputs">One input per line (a blank line tests ε)</label>
+      <textarea id="batch-inputs" v-model="sim.batchInput" rows="4" class="sim-controls__input" />
+      <button class="sim-controls__btn" @click="sim.runBatch(docStore.automaton)">Run batch</button>
+      <table v-if="sim.batchResults.length" class="sim-controls__results">
+        <thead><tr><th>Input</th><th>Outcome</th><th>Steps</th></tr></thead>
+        <tbody>
+          <tr v-for="(result, index) in sim.batchResults" :key="`${index}:${result.input}`">
+            <td>{{ result.input || 'ε' }}</td><td>{{ result.outcome }}</td><td>{{ result.steps }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
   </div>
 </template>
 
@@ -345,5 +359,34 @@ function remainingText(config: Record<string, unknown>): string {
 .sim-controls__witness {
   color: var(--color-success);
   font-family: var(--font-mono);
+}
+
+.sim-controls__batch {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.sim-controls__batch summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sim-controls__batch textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.sim-controls__results {
+  width: 100%;
+  border-collapse: collapse;
+  font: 11px var(--font-mono);
+}
+
+.sim-controls__results th,
+.sim-controls__results td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
 }
 </style>

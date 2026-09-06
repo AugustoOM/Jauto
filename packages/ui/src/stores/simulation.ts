@@ -13,6 +13,13 @@ export interface TransitionHighlight {
   label: string;
 }
 
+export interface BatchResult {
+  input: string;
+  outcome: SimulationStatus;
+  steps: number;
+  message?: string;
+}
+
 export const useSimulationStore = defineStore('simulation', () => {
   const document = useDocumentStore();
   const input = ref('');
@@ -23,6 +30,8 @@ export const useSimulationStore = defineStore('simulation', () => {
   const highlightedStates = ref<Set<string>>(new Set());
   const activeTraceIndex = ref(-1);
   const speed = ref(500);
+  const batchInput = ref('');
+  const batchResults = ref<BatchResult[]>([]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let runner: SimulationRunner<any> | null = null;
@@ -164,6 +173,18 @@ export const useSimulationStore = defineStore('simulation', () => {
     start(automaton);
   }
 
+  function runBatch(automaton: AnyAutomaton, maxSteps = 10000) {
+    batchResults.value = batchInput.value.split(/\r?\n/).map((value) => value.trim()).map((value) => {
+      try {
+        const batchRunner = createRunnerFor(automaton, value);
+        const result = batchRunner.run(maxSteps);
+        return { input: value, outcome: result.outcome, steps: result.steps.length };
+      } catch (error) {
+        return { input: value, outcome: 'invalid' as const, steps: 0, message: error instanceof Error ? error.message : String(error) };
+      }
+    });
+  }
+
   watch(speed, () => {
     if (!isRunning.value || intervalId === null) return;
     clearInterval(intervalId);
@@ -204,7 +225,7 @@ export const useSimulationStore = defineStore('simulation', () => {
     input, isRunning, isActive, status, errorMessage, stepIndex, highlightedStates,
     activeTransition, activeConfigurations, activeSnapshot, acceptingPath,
     activeTraceIndex, executionIndex, transitionHighlights, canGoPrevious, canGoNext,
-    speed, traceSteps, start, step: (_automaton: AnyAutomaton) => executeStep(), nextStep,
-    previousStep, play, pause, stop, invalidate, reset,
+    speed, traceSteps, batchInput, batchResults, start, step: (_automaton: AnyAutomaton) => executeStep(), nextStep,
+    previousStep, play, pause, stop, invalidate, reset, runBatch,
   };
 });
