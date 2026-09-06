@@ -26,6 +26,7 @@ export function createPDARunner(
   let stepIndex = 0;
   let accepted = false;
   let configurationLimitReached = false;
+  let canceled = false;
 
   function configurationKey(config: PDAConfiguration): string {
     return `${config.state}\u0000${config.inputIndex}\u0000${config.stack.join('\u0001')}`;
@@ -63,6 +64,7 @@ export function createPDARunner(
   }
 
   function getStatus(): SimulationStatus {
+    if (canceled) return 'canceled';
     if (accepted) return 'accepted';
     if (configurationLimitReached) return 'incomplete';
     if (configs.length === 0) return 'rejected';
@@ -155,12 +157,16 @@ export function createPDARunner(
     stepIndex = 0;
     accepted = false;
     configurationLimitReached = false;
+    canceled = false;
   }
+
+  function cancel() { canceled = true; }
 
   return {
     step,
     run,
     reset,
+    cancel,
     get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return accepted || getStatus() === 'accepted'; },
     get currentConfig() { return toPublicConfig(); },

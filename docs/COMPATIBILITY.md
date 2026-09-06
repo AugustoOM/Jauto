@@ -10,7 +10,7 @@ This table records the audited baseline. Update a row only after its independent
 | --- | --- | --- | --- |
 | Finite automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests; representative export reopened by JFLAP 7.1 | DFA/NFA literal-string execution, including prefix-overlapping branches and epsilon closure |
 | Pushdown automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Initial `Z`, literal read/pop/push strings, final-state acceptance; exploration limit reporting remains pending |
-| Single-tape Turing machines | Validated literal single-tape subset | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Deterministic literal-symbol subset |
+| Single-tape Turing machines | Validated literal single-tape subset | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Deterministic literal-symbol subset with explicit final-state/halting profiles; nondeterminism and shortcut syntax are rejected before execution |
 | Notes and transition control points | Preserved | Round-trip covered by automated tests | Layout only; editing UI is pending |
 | Multi-tape and building-block TMs | Rejected with an actionable error | Not editable | Unsupported |
 | Regular expressions, grammars, Mealy/Moore, L-systems, pumping exercises | Unsupported | Unsupported | Unsupported |

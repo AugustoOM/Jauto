@@ -18,8 +18,10 @@ export function createDFARunner(
   };
   let stepIndex = 0;
   let halted = false;
+  let canceled = false;
 
   function getStatus(): SimulationStatus {
+    if (canceled) return 'canceled';
     if (config.remainingInput.length === 0) {
       const state = automaton.states.find((s) => s.id === config.currentState);
       return state?.isFinal ? 'accepted' : 'rejected';
@@ -28,7 +30,7 @@ export function createDFARunner(
   }
 
   function step(): StepResult<DFAConfig> {
-    if (halted || config.remainingInput.length === 0) {
+    if (getStatus() !== 'running') {
       return { config, status: getStatus(), stepIndex };
     }
 
@@ -67,13 +69,17 @@ export function createDFARunner(
     config = { currentState: initialId, remainingInput: input, inputIndex: 0 };
     stepIndex = 0;
     halted = false;
+    canceled = false;
   }
+
+  function cancel() { canceled = true; }
 
   return {
     step,
     run,
     reset,
-    get isHalted() { return halted || config.remainingInput.length === 0; },
+    cancel,
+    get isHalted() { return canceled || halted || config.remainingInput.length === 0; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return config; },
   };

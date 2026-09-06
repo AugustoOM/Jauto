@@ -16,6 +16,7 @@ export const useSimulationStore = defineStore('simulation', () => {
   const input = ref('');
   const isRunning = ref(false);
   const status = ref<SimulationStatus | null>(null);
+  const errorMessage = ref<string | null>(null);
   const stepIndex = ref(0);
   const highlightedStates = ref<Set<string>>(new Set());
   const transitionHighlights = ref<TransitionHighlight[]>([]);
@@ -77,8 +78,9 @@ export const useSimulationStore = defineStore('simulation', () => {
     try {
       runner = createRunnerFor(automaton, input.value);
       activeAutomaton = automaton;
-    } catch {
-      status.value = 'rejected';
+    } catch (error) {
+      status.value = 'invalid';
+      errorMessage.value = error instanceof Error ? error.message : String(error);
       return;
     }
     status.value = runner.isAccepted ? 'accepted' : runner.isHalted ? 'rejected' : 'running';
@@ -144,9 +146,11 @@ export const useSimulationStore = defineStore('simulation', () => {
 
   function stop() {
     pause();
+    runner?.cancel();
     runner = null;
     activeAutomaton = null;
     status.value = null;
+    errorMessage.value = null;
     stepIndex.value = 0;
     traceSteps.value = [];
     transitionHighlights.value = [];
@@ -269,6 +273,7 @@ export const useSimulationStore = defineStore('simulation', () => {
     isRunning,
     isActive,
     status,
+    errorMessage,
     stepIndex,
     highlightedStates,
     activeTransition,

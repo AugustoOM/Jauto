@@ -92,13 +92,17 @@ function handleNextStep() {
         class="sim-controls__result"
         :class="{
           'sim-controls__result--accepted': sim.status === 'accepted',
-          'sim-controls__result--rejected': sim.status === 'rejected' || sim.status === 'halted',
+          'sim-controls__result--rejected': sim.status !== 'running' && sim.status !== 'accepted',
         }"
       >
         {{ sim.status === 'running' ? 'Running...' :
            sim.status === 'accepted' ? 'Accepted' :
-           sim.status === 'halted' ? 'Halted' : 'Rejected' }}
+           sim.status === 'halted' ? 'Halted' :
+           sim.status === 'invalid' ? 'Invalid machine' :
+           sim.status === 'incomplete' ? 'Incomplete' :
+           sim.status === 'canceled' ? 'Canceled' : 'Rejected' }}
       </span>
+      <span v-if="sim.errorMessage" class="sim-controls__detail">{{ sim.errorMessage }}</span>
     </div>
     <div v-if="sim.isActive" class="sim-controls__speed">
       <label class="sim-controls__label">Speed</label>

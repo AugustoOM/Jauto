@@ -20,7 +20,15 @@ export interface SimulationRunner<TConfig> {
   step(): StepResult<TConfig>;
   run(maxSteps?: number): RunResult<TConfig>;
   reset(): void;
+  cancel(): void;
   readonly isHalted: boolean;
   readonly isAccepted: boolean;
   readonly currentConfig: TConfig;
+}
+
+export class UnsupportedSimulationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UnsupportedSimulationError';
+  }
 }

@@ -40,6 +40,7 @@ export function createNFARunner(
   const initialBranches = epsilonClosure([{ state: initialState.id, inputIndex: 0 }]);
   let branches = initialBranches;
   let stepIndex = 0;
+  let canceled = false;
 
   function toPublicConfig(): NFAConfig {
     const inputIndex = branches.reduce(
@@ -67,6 +68,7 @@ export function createNFARunner(
   }
 
   function getStatus(): SimulationStatus {
+    if (canceled) return 'canceled';
     if (branches.some(isAccepting)) return 'accepted';
     if (branches.length === 0 || !hasApplicableTransition()) return 'rejected';
     return 'running';
@@ -115,12 +117,16 @@ export function createNFARunner(
   function reset() {
     branches = initialBranches;
     stepIndex = 0;
+    canceled = false;
   }
+
+  function cancel() { canceled = true; }
 
   return {
     step,
     run,
     reset,
+    cancel,
     get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return toPublicConfig(); },

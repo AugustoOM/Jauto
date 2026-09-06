@@ -90,4 +90,16 @@ describe('bounded run outcomes', () => {
     const second = runner.step();
     expect(second).toEqual(first);
   });
+
+  it.each([
+    ['DFA', () => createDFARunner(dfa, 'a')],
+    ['NFA', () => createNFARunner(nfa, 'a')],
+    ['PDA', () => createPDARunner(pda, 'a')],
+    ['TM', () => createTMRunner(tm, 'a')],
+  ])('%s exposes cancellation as a terminal outcome', (_name, createRunner) => {
+    const runner = createRunner();
+    runner.cancel();
+    expect(runner.run()).toMatchObject({ accepted: false, outcome: 'canceled' });
+    expect(runner.step().status).toBe('canceled');
+  });
 });

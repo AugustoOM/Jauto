@@ -126,10 +126,10 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Support the declared FA/PDA string-transition semantics, including PDA stack-string matching.
 - [x] Initialize PDA stacks consistently with JFLAP and correct initial-configuration acceptance.
 - [x] Implement fair nondeterministic exploration and configuration deduplication where appropriate.
-- [ ] Support nondeterministic TMs or explicitly prevent unsupported execution until implemented.
-- [ ] Specify and implement the targeted TM acceptance policies and shortcut syntax.
+- [x] Support nondeterministic TMs or explicitly prevent unsupported execution until implemented.
+- [x] Specify and implement the targeted TM acceptance policies and shortcut syntax.
 - [x] Replace silent branch truncation with explicit resource-limit outcomes.
-- [ ] Standardize accepted, rejected, invalid, canceled, and incomplete outcomes across runners.
+- [x] Standardize accepted, rejected, invalid, canceled, and incomplete outcomes across runners.
 - [x] Validate execution budgets, including zero/negative values, and make terminal steps idempotent.
 - [ ] Repair determinism checks and remove placeholder completeness results.
 - [ ] Separate input, stack, and tape alphabet helpers.
@@ -256,5 +256,6 @@ Before calling the automata milestone dependable:
 - Exact structural undo: removal commands now capture and restore original state and transition indices, including connected edges, while revision history returns to the saved revision. Validation: 43 core tests passed; core type checks and lint passed.
 - Inspector transaction boundary: registered the active inspector draft with the document store and flush it before selection changes, save, New/Open, simulation start, undo, and redo. Validation: 21 UI tests passed; workspace type checks and lint passed.
 - Fair bounded exploration: deduplicated NFA/PDA configurations during breadth-first stepping, replaced PDA's silent 1,000-branch truncation with an `incomplete` result and `configuration-limit` reason, validated run budgets, and made terminal stepping idempotent. Validation: 43 simulator tests passed; simulator type checks and lint passed.
+- Execution profiles and outcomes: added terminal cancellation across runners, surfaced invalid-machine errors in the editor, implemented configurable TM final-state/halting acceptance, and reject nondeterministic TMs, disabled stay moves, and JFLAP shortcut syntax before execution when unsupported. Validation: 49 simulator and 21 UI tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
