@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { FiniteAutomaton, TuringMachine } from '@jauto/core';
+import type { FiniteAutomaton, PushdownAutomaton, TuringMachine } from '@jauto/core';
 import { createNFARunner } from '../../simulator/src/nfa-runner';
+import { createPDARunner } from '../../simulator/src/pda-runner';
 import { createTMRunner } from '../../simulator/src/tm-runner';
 import { parseJFF } from '../src/parser';
 import { serializeJFF } from '../src/serializer';
@@ -38,6 +39,19 @@ describe('vendor-authored JFLAP conformance corpus', () => {
     }
     for (const input of ['a', 'ab', 'aabcc', 'aabbccc', 'abcabc']) {
       expect(createTMRunner(automaton, input).run().outcome, input).not.toBe('accepted');
+    }
+  });
+
+  it.each([
+    ['pdaexample.jff', ['ab', 'aabb', 'aaabbb'], ['', 'a', 'b', 'aab', 'abb', 'abab']],
+    ['ex5.1.jff', ['abb', 'abbb', 'aabbb'], ['', 'a', 'b', 'ab', 'aabb', 'abab']],
+  ] as const)('executes the published %s PDA language', (name, accepted, rejected) => {
+    const automaton = load(name) as PushdownAutomaton;
+    for (const input of accepted) {
+      expect(createPDARunner(automaton, input).run().outcome, input).toBe('accepted');
+    }
+    for (const input of rejected) {
+      expect(createPDARunner(automaton, input).run().outcome, input || 'epsilon').toBe('rejected');
     }
   });
 

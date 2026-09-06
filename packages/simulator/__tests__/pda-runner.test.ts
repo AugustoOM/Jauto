@@ -72,4 +72,25 @@ describe('PDA Runner', () => {
     const result = runner.run();
     expect(result.accepted).toBe(false);
   });
+
+  it('starts with JFLAP bottom marker Z and keeps terminal acceptance idempotent', () => {
+    const acceptsEmpty = buildPDA([s('0', { isInitial: true, isFinal: true })], []);
+    const runner = createPDARunner(acceptsEmpty, '');
+    expect(runner.currentConfig.stack).toEqual(['Z']);
+    expect(runner.step().status).toBe('accepted');
+    expect(runner.step().status).toBe('accepted');
+    expect(runner.currentConfig.stack).toEqual(['Z']);
+  });
+
+  it('matches complete read and stack strings with the leftmost stack symbol on top', () => {
+    const stringPda = buildPDA(
+      [s('0', { isInitial: true }), s('1'), s('2', { isFinal: true })],
+      [
+        t('t0', '0', '1', 'ab', 'Z', 'xyZ'),
+        t('t1', '1', '2', 'cd', 'xy', ''),
+      ],
+    );
+    expect(createPDARunner(stringPda, 'abcd').run().outcome).toBe('accepted');
+    expect(createPDARunner(stringPda, 'abd').run().outcome).toBe('rejected');
+  });
 });

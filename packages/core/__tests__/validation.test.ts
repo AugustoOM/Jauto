@@ -67,6 +67,14 @@ describe('validation', () => {
       );
       expect(isDeterministic(fa)).toBe(false);
     });
+
+    it('returns false for prefix-overlapping string transitions', () => {
+      const fa = buildFA(
+        [s('0'), s('1'), s('2')],
+        [t('t0', '0', '1', 'a'), t('t1', '0', '2', 'ab')],
+      );
+      expect(isDeterministic(fa)).toBe(false);
+    });
   });
 
   describe('isComplete', () => {

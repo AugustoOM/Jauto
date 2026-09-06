@@ -2,72 +2,100 @@ import type { FiniteAutomaton } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { NFAConfig } from './configs';
 
+interface Branch {
+  state: string;
+  inputIndex: number;
+}
+
 export function createNFARunner(
   automaton: FiniteAutomaton,
   input: string,
 ): SimulationRunner<NFAConfig> {
-  const initialState = automaton.states.find((s) => s.isInitial);
+  const initialState = automaton.states.find((state) => state.isInitial);
   if (!initialState) throw new Error('No initial state');
 
-  function epsilonClosure(stateIds: ReadonlySet<string>): ReadonlySet<string> {
-    const closure = new Set(stateIds);
-    const queue = [...stateIds];
+  function branchKey(branch: Branch): string {
+    return `${branch.state}\u0000${branch.inputIndex}`;
+  }
 
+  function epsilonClosure(seed: readonly Branch[]): Branch[] {
+    const closure = new Map(seed.map((branch) => [branchKey(branch), branch]));
+    const queue = [...seed];
     while (queue.length > 0) {
-      const current = queue.pop()!;
-      for (const t of automaton.transitions) {
-        if (t.from === current && t.read === '' && !closure.has(t.to)) {
-          closure.add(t.to);
-          queue.push(t.to);
+      const current = queue.shift()!;
+      for (const transition of automaton.transitions) {
+        if (transition.from !== current.state || transition.read !== '') continue;
+        const next = { state: transition.to, inputIndex: current.inputIndex };
+        const key = branchKey(next);
+        if (!closure.has(key)) {
+          closure.set(key, next);
+          queue.push(next);
         }
       }
     }
-    return closure;
+    return [...closure.values()];
   }
 
-  const initialClosure = epsilonClosure(new Set([initialState.id]));
-  let config: NFAConfig = {
-    activeStates: initialClosure,
-    remainingInput: input,
-    inputIndex: 0,
-  };
+  const initialBranches = epsilonClosure([{ state: initialState.id, inputIndex: 0 }]);
+  let branches = initialBranches;
   let stepIndex = 0;
 
+  function toPublicConfig(): NFAConfig {
+    const inputIndex = branches.reduce(
+      (minimum, branch) => Math.min(minimum, branch.inputIndex),
+      input.length,
+    );
+    return {
+      activeStates: new Set(branches.map((branch) => branch.state)),
+      remainingInput: input.slice(inputIndex),
+      inputIndex,
+    };
+  }
+
+  function isAccepting(branch: Branch): boolean {
+    return branch.inputIndex === input.length &&
+      Boolean(automaton.states.find((state) => state.id === branch.state)?.isFinal);
+  }
+
+  function hasApplicableTransition(): boolean {
+    return branches.some((branch) => automaton.transitions.some((transition) =>
+      transition.from === branch.state &&
+      transition.read.length > 0 &&
+      input.startsWith(transition.read, branch.inputIndex),
+    ));
+  }
+
   function getStatus(): SimulationStatus {
-    if (config.remainingInput.length === 0) {
-      for (const stateId of config.activeStates) {
-        const state = automaton.states.find((s) => s.id === stateId);
-        if (state?.isFinal) return 'accepted';
-      }
-      return 'rejected';
-    }
-    if (config.activeStates.size === 0) return 'rejected';
+    if (branches.some(isAccepting)) return 'accepted';
+    if (branches.length === 0 || !hasApplicableTransition()) return 'rejected';
     return 'running';
   }
 
   function step(): StepResult<NFAConfig> {
-    if (config.remainingInput.length === 0 || config.activeStates.size === 0) {
-      return { config, status: getStatus(), stepIndex };
+    const currentStatus = getStatus();
+    if (currentStatus !== 'running') {
+      return { config: toPublicConfig(), status: currentStatus, stepIndex };
     }
 
-    const symbol = config.remainingInput[0]!;
-    const nextStates = new Set<string>();
-
-    for (const stateId of config.activeStates) {
-      for (const t of automaton.transitions) {
-        if (t.from === stateId && t.read === symbol) {
-          nextStates.add(t.to);
+    const next = new Map<string, Branch>();
+    for (const branch of branches) {
+      for (const transition of automaton.transitions) {
+        if (
+          transition.from === branch.state &&
+          transition.read.length > 0 &&
+          input.startsWith(transition.read, branch.inputIndex)
+        ) {
+          const candidate = {
+            state: transition.to,
+            inputIndex: branch.inputIndex + transition.read.length,
+          };
+          next.set(branchKey(candidate), candidate);
         }
       }
     }
-
-    config = {
-      activeStates: epsilonClosure(nextStates),
-      remainingInput: config.remainingInput.slice(1),
-      inputIndex: config.inputIndex + 1,
-    };
+    branches = epsilonClosure([...next.values()]);
     stepIndex++;
-    return { config, status: getStatus(), stepIndex };
+    return { config: toPublicConfig(), status: getStatus(), stepIndex };
   }
 
   function run(maxSteps = 10000): RunResult<NFAConfig> {
@@ -79,11 +107,11 @@ export function createNFARunner(
     }
     const status = getStatus();
     const outcome = status === 'running' ? 'step-limit' : status;
-    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: config };
+    return { accepted: outcome === 'accepted', outcome, steps, finalConfig: toPublicConfig() };
   }
 
   function reset() {
-    config = { activeStates: initialClosure, remainingInput: input, inputIndex: 0 };
+    branches = initialBranches;
     stepIndex = 0;
   }
 
@@ -91,8 +119,8 @@ export function createNFARunner(
     step,
     run,
     reset,
-    get isHalted() { return config.remainingInput.length === 0 || config.activeStates.size === 0; },
+    get isHalted() { return getStatus() !== 'running'; },
     get isAccepted() { return getStatus() === 'accepted'; },
-    get currentConfig() { return config; },
+    get currentConfig() { return toPublicConfig(); },
   };
 }

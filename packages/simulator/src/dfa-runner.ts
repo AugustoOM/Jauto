@@ -31,9 +31,8 @@ export function createDFARunner(
       return { config, status: getStatus(), stepIndex };
     }
 
-    const symbol = config.remainingInput[0]!;
     const transition = automaton.transitions.find(
-      (t) => t.from === config.currentState && t.read === symbol,
+      (t) => t.from === config.currentState && t.read.length > 0 && config.remainingInput.startsWith(t.read),
     );
 
     if (!transition) {
@@ -43,8 +42,8 @@ export function createDFARunner(
 
     config = {
       currentState: transition.to,
-      remainingInput: config.remainingInput.slice(1),
-      inputIndex: config.inputIndex + 1,
+      remainingInput: config.remainingInput.slice(transition.read.length),
+      inputIndex: config.inputIndex + transition.read.length,
     };
     stepIndex++;
     return { config, status: getStatus(), stepIndex };

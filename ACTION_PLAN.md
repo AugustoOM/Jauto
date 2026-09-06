@@ -75,7 +75,7 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Start with FA/NFA, PDA, and single-tape TM as the first compatibility milestone.
 - [x] Build a conformance suite from official JFLAP files and independently established expected outcomes.
 - [x] Verify Jauto-created exports in JFLAP, including files with multiple new states.
-- [ ] Add regression cases for the confirmed defects, including empty input, string transitions, epsilon cycles, nondeterminism, malformed XML, and resource exhaustion.
+- [x] Add regression cases for the confirmed defects, including empty input, string transitions, epsilon cycles, nondeterminism, malformed XML, and resource exhaustion.
 - [x] Enable Vue linting and meaningful UI/store/file-service integration tests.
 - [x] Add pull-request checks for tests, lint, type checking, and builds.
 
@@ -123,8 +123,8 @@ No source or configuration files were changed during the audit. Native installer
 **Dependencies:** Compatibility semantics from step 1; coordinate model changes with step 2
 
 - [x] Connect NFA execution and epsilon closure to the editor.
-- [ ] Support the declared FA/PDA string-transition semantics, including PDA stack-string matching.
-- [ ] Initialize PDA stacks consistently with JFLAP and correct initial-configuration acceptance.
+- [x] Support the declared FA/PDA string-transition semantics, including PDA stack-string matching.
+- [x] Initialize PDA stacks consistently with JFLAP and correct initial-configuration acceptance.
 - [ ] Implement fair nondeterministic exploration and configuration deduplication where appropriate.
 - [ ] Support nondeterministic TMs or explicitly prevent unsupported execution until implemented.
 - [ ] Specify and implement the targeted TM acceptance policies and shortcut syntax.
@@ -249,5 +249,6 @@ Before calling the automata milestone dependable:
 - NFA editor execution: routed nondeterministic finite automata to the NFA runner, exposed epsilon-closure branch states in the canvas highlights, and derived the initial status from the runner so empty-input acceptance is immediate. Validation: 11 UI tests passed; workspace type checks and lint passed.
 - Bounded simulation outcomes: added an explicit `step-limit` run outcome, preserved the current configuration for zero-step runs, and removed the shared `run(0)` crash from all four runners. Validation: 30 simulator tests passed; workspace type checks and lint passed.
 - Vendor conformance corpus: retained official JFLAP NFA, PDA, and TM examples with provenance and independent language expectations; added execution and graph-preservation checks. A four-state Jauto export with colliding-style internal IDs was reopened successfully by JFLAP 7.1's own XML decoder. Validation: 44 JFF tests passed; JFLAP returned `automata.fsa.FiniteStateAutomaton` for the generated export.
+- Transition-semantics regressions: implemented complete FA/PDA string reads, prefix-aware NFA branching, PDA stack-string operations with JFLAP's initial `Z`, and idempotent initial acceptance. Added regressions for string labels, epsilon cycles, nondeterminism, malformed documents, zero-step/resource limits, and vendor PDA languages. Validation: 41 core, 35 simulator, 11 UI, and 46 JFF tests passed; workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.

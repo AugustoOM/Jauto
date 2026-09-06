@@ -37,10 +37,14 @@ function checkFADeterminism(automaton: FiniteAutomaton): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
     const readSymbols = transitions.map((t) => t.read);
-    const hasEpsilon = readSymbols.some((s) => s === '');
-    if (hasEpsilon) return false;
-    const uniqueSymbols = new Set(readSymbols);
-    if (uniqueSymbols.size !== readSymbols.length) return false;
+    if (readSymbols.some((symbol) => symbol === '')) return false;
+    for (let i = 0; i < readSymbols.length; i++) {
+      for (let j = i + 1; j < readSymbols.length; j++) {
+        if (readSymbols[i]!.startsWith(readSymbols[j]!) || readSymbols[j]!.startsWith(readSymbols[i]!)) {
+          return false;
+        }
+      }
+    }
   }
   return true;
 }

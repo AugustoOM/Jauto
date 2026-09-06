@@ -20,7 +20,7 @@ export function createPDARunner(
   const initialId = initialState.id;
 
   let configs: PDAConfiguration[] = [
-    { state: initialId, remaining: input, inputIndex: 0, stack: [] },
+    { state: initialId, remaining: input, inputIndex: 0, stack: ['Z'] },
   ];
   let stepIndex = 0;
   let accepted = false;
@@ -38,15 +38,22 @@ export function createPDARunner(
 
   function hasApplicableTransitions(): boolean {
     for (const c of configs) {
-      const topOfStack = c.stack.at(-1) ?? '';
       for (const t of automaton.transitions) {
         if (t.from !== c.state) continue;
-        const readMatches = t.read === '' || (c.remaining.length > 0 && t.read === c.remaining[0]);
-        const popMatches = t.pop === '' || t.pop === topOfStack;
+        const readMatches = c.remaining.startsWith(t.read);
+        const popMatches = stackEndsWith(c.stack, t.pop);
         if (readMatches && popMatches) return true;
       }
     }
     return false;
+  }
+
+  function stackEndsWith(stack: readonly string[], pop: string): boolean {
+    if (pop.length > stack.length) return false;
+    for (let i = 0; i < pop.length; i++) {
+      if (stack[stack.length - 1 - i] !== pop[i]) return false;
+    }
+    return true;
   }
 
   function getStatus(): SimulationStatus {
@@ -65,31 +72,30 @@ export function createPDARunner(
   }
 
   function step(): StepResult<PDAConfig> {
-    if (configs.length === 0 || accepted) {
-      return { config: toPublicConfig(), status: getStatus(), stepIndex };
+    const currentStatus = getStatus();
+    if (currentStatus !== 'running') {
+      return { config: toPublicConfig(), status: currentStatus, stepIndex };
     }
 
     const nextConfigs: PDAConfiguration[] = [];
 
     for (const c of configs) {
-      const topOfStack = c.stack.at(-1) ?? '';
-
       for (const t of automaton.transitions) {
         if (t.from !== c.state) continue;
 
-        const readMatches = t.read === '' || (c.remaining.length > 0 && t.read === c.remaining[0]);
-        const popMatches = t.pop === '' || t.pop === topOfStack;
+        const readMatches = c.remaining.startsWith(t.read);
+        const popMatches = stackEndsWith(c.stack, t.pop);
 
         if (readMatches && popMatches) {
           const newStack = [...c.stack];
-          if (t.pop !== '') newStack.pop();
+          newStack.splice(newStack.length - t.pop.length, t.pop.length);
           if (t.push !== '') {
             for (let i = t.push.length - 1; i >= 0; i--) {
               newStack.push(t.push[i]!);
             }
           }
 
-          const consumed = t.read !== '' ? 1 : 0;
+          const consumed = t.read.length;
           nextConfigs.push({
             state: t.to,
             remaining: c.remaining.slice(consumed),
@@ -129,7 +135,7 @@ export function createPDARunner(
   }
 
   function reset() {
-    configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: [] }];
+    configs = [{ state: initialId, remaining: input, inputIndex: 0, stack: ['Z'] }];
     stepIndex = 0;
     accepted = false;
   }

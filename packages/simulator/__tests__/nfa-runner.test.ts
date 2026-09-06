@@ -66,4 +66,21 @@ describe('NFA Runner', () => {
     const runner = createNFARunner(nfa, '');
     expect(runner.isAccepted).toBe(true);
   });
+
+  it('terminates epsilon closure when transitions contain a cycle', () => {
+    const nfa = buildNFA(
+      [s('0', { isInitial: true }), s('1'), s('2', { isFinal: true })],
+      [t('t0', '0', '1', ''), t('t1', '1', '0', ''), t('t2', '1', '2', 'a')],
+    );
+    expect(createNFARunner(nfa, 'a').run().outcome).toBe('accepted');
+  });
+
+  it('explores prefix-overlapping string transitions at different input positions', () => {
+    const nfa = buildNFA(
+      [s('0', { isInitial: true }), s('1'), s('2'), s('3', { isFinal: true })],
+      [t('t0', '0', '1', 'a'), t('t1', '0', '2', 'ab'), t('t2', '1', '3', 'bc')],
+    );
+    expect(createNFARunner(nfa, 'abc').run().outcome).toBe('accepted');
+    expect(createNFARunner(nfa, 'ab').run().outcome).toBe('rejected');
+  });
 });
