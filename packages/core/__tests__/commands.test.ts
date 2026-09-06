@@ -113,6 +113,14 @@ describe('RemoveStateCommand', () => {
     expect(restored.states).toHaveLength(2);
     expect(restored.transitions).toHaveLength(1);
   });
+
+  it('restores the exact state and transition ordering', () => {
+    const states = [s('0'), s('1'), s('2')];
+    const transitions = [t('t0', '0', '1', 'a'), t('t1', '1', '2', 'b'), t('t2', '2', '0', 'c')];
+    const fa: FiniteAutomaton = { kind: 'fa', states, transitions };
+    const command = new RemoveStateCommand(states[1]!, [transitions[0]!, transitions[1]!]);
+    expect(command.undo(command.execute(fa))).toEqual(fa);
+  });
 });
 
 describe('MoveStateCommand', () => {
@@ -152,6 +160,13 @@ describe('AddTransitionCommand / RemoveTransitionCommand', () => {
     expect(after.transitions).toHaveLength(0);
     const back = cmd.undo(after);
     expect(back.transitions).toHaveLength(1);
+  });
+
+  it('restores a removed transition at its original index', () => {
+    const transitions = [t('t0', '0', '1', 'a'), t('t1', '0', '1', 'b'), t('t2', '0', '1', 'c')];
+    const fa: FiniteAutomaton = { kind: 'fa', states: [s('0'), s('1')], transitions };
+    const command = new RemoveTransitionCommand(transitions[1]!);
+    expect(command.undo(command.execute(fa))).toEqual(fa);
   });
 });
 

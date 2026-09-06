@@ -113,7 +113,7 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Handle cancellation, false save results, and errors without clearing unsaved state.
 - [x] Display actionable open/save/export errors instead of relying on console output.
 - [ ] Resolve inspector drafts consistently before saving, starting simulation, changing selection, or undoing.
-- [ ] Make undo restore exact graph structure and order; test undo back to the saved revision.
+- [x] Make undo restore exact graph structure and order; test undo back to the saved revision.
 
 **Acceptance criteria:** Typing never deletes graph elements. Canceled or failed operations retain work. Save indicators accurately describe the saved revision, and pending edits cannot disappear silently.
 
@@ -253,5 +253,6 @@ Before calling the automata milestone dependable:
 - Revision-based document state: replaced the manual dirty flag with document identity plus current/saved revisions, preserved revisions across undo/redo, kept drag previews outside history, and bound asynchronous save completion to the captured document revision. Validation: 12 UI tests passed; workspace type checks and lint passed.
 - Protected document lifecycle: routed New/Open through a shared Save/Discard/Cancel decision, retained work when saving fails or the user cancels, added browser reload/close protection, persisted unsaved recovery drafts, and exposed Resume on Home. Home navigation retains the current document rather than discarding it. Validation: 19 UI tests passed; workspace type checks and lint passed.
 - File identity and save behavior: carried desktop paths through open/save, made Save overwrite the current path while Save As opens the chooser, adopted the filename actually selected, retained dirty state on cancellation/failure, and surfaced save/export errors to users. Validation: 4 file-service and 20 UI tests passed; Rust check/format, workspace type checks and lint passed.
+- Exact structural undo: removal commands now capture and restore original state and transition indices, including connected edges, while revision history returns to the saved revision. Validation: 43 core tests passed; core type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
