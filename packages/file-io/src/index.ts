@@ -1,4 +1,4 @@
-export type { FileService, FileOpenResult } from './file-service';
+export type { FileService, FileOpenResult, FileSaveResult } from './file-service';
 export { openAutomaton, FileOpenError } from './open';
 export type { OpenResult } from './open';
 export { saveAutomaton } from './save';

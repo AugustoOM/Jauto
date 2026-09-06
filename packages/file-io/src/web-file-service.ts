@@ -1,4 +1,4 @@
-import type { FileService, FileOpenResult } from './file-service';
+import type { FileService, FileOpenResult, FileSaveResult } from './file-service';
 
 export class WebFileService implements FileService {
   async openFile(): Promise<FileOpenResult | null> {
@@ -26,7 +26,7 @@ export class WebFileService implements FileService {
     });
   }
 
-  async saveFile(name: string, content: string): Promise<boolean> {
+  async saveFile(name: string, content: string): Promise<FileSaveResult | null> {
     try {
       const blob = new Blob([content], { type: 'application/xml' });
       const url = URL.createObjectURL(blob);
@@ -37,9 +37,9 @@ export class WebFileService implements FileService {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      return true;
+      return { name: a.download };
     } catch {
-      return false;
+      return null;
     }
   }
 

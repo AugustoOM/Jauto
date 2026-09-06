@@ -29,12 +29,12 @@ async function saveCurrentDocument(): Promise<boolean> {
   try {
     const name = docStore.fileName ?? 'untitled.jff';
     const token = docStore.createRevisionToken();
-    const saved = await saveAutomaton(fileService, docStore.automaton, name);
-    if (saved) {
-      docStore.markSaved(token, name);
+    const result = await saveAutomaton(fileService, docStore.automaton, name, docStore.filePath ?? undefined);
+    if (result) {
+      docStore.markSaved(token, result.name, result.path);
       updateTitle();
     }
-    return saved;
+    return result !== null;
   } catch (err) {
     window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
     return false;
@@ -61,7 +61,7 @@ async function handleOpen() {
     try {
       const result = await openAutomaton(fileService);
       if (result) {
-        docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+        docStore.loadAutomaton(result.automaton, result.fileName, result.warnings, result.filePath);
         historyStore.clear();
         simStore.stop();
         updateTitle();

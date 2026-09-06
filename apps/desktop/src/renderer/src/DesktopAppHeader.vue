@@ -70,7 +70,7 @@ async function openFile() {
       try {
         const result = await openAutomaton(fileService);
         if (result) {
-          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings);
+          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings, result.filePath);
           historyStore.clear();
           simStore.stop();
         }
@@ -81,17 +81,26 @@ async function openFile() {
   });
 }
 
-async function persistToDisk(): Promise<boolean> {
+async function persistToDisk(saveAs = false): Promise<boolean> {
   const name = docStore.fileName ?? 'untitled.jff';
   const token = docStore.createRevisionToken();
-  const saved = await saveAutomaton(fileService, docStore.automaton, name);
-  if (saved) docStore.markSaved(token, name);
-  return saved;
+  const result = await saveAutomaton(
+    fileService,
+    docStore.automaton,
+    name,
+    saveAs ? undefined : docStore.filePath ?? undefined,
+  );
+  if (result) docStore.markSaved(token, result.name, result.path);
+  return result !== null;
 }
 
 async function saveFile() {
   closeMenu();
-  await onSaveClick();
+  try {
+    await persistToDisk(true);
+  } catch (err) {
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 async function onSaveClick() {
@@ -100,7 +109,7 @@ async function onSaveClick() {
   try {
     await persistToDisk();
   } catch (err) {
-    console.error('Failed to save:', err);
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     savingFile.value = false;
   }
@@ -111,9 +120,12 @@ async function exportPNG() {
   const canvas = document.querySelector('canvas');
   if (!canvas) return;
   canvas.toBlob(async (blob) => {
-    if (blob) {
+    try {
+      if (!blob) throw new Error('The canvas could not be encoded as PNG');
       const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
       await fileService.exportImage(blob, name);
+    } catch (err) {
+      window.alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
     }
   });
 }

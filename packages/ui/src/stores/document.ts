@@ -27,6 +27,7 @@ export const useDocumentStore = defineStore('document', () => {
   const currentView = ref<AppView>('home');
   const automaton = ref<AnyAutomaton>(createEmptyAutomaton('fa'));
   const fileName = ref<string | null>(null);
+  const filePath = ref<string | null>(null);
   const documentId = ref(0);
   const revision = ref(0);
   const savedRevision = ref(0);
@@ -54,7 +55,7 @@ export const useDocumentStore = defineStore('document', () => {
   function persistRecoveryDraft() {
     const storage = recoveryStorage();
     if (!storage) return;
-    storage.setItem(recoveryKey, JSON.stringify({ automaton: automaton.value, fileName: fileName.value }));
+    storage.setItem(recoveryKey, JSON.stringify({ automaton: automaton.value, fileName: fileName.value, filePath: filePath.value }));
   }
 
   function clearRecoveryDraft() {
@@ -86,10 +87,11 @@ export const useDocumentStore = defineStore('document', () => {
     nextRevision = 0;
   }
 
-  function loadAutomaton(newAutomaton: AnyAutomaton, name: string | null = null, warnings: readonly { message: string }[] = []) {
+  function loadAutomaton(newAutomaton: AnyAutomaton, name: string | null = null, warnings: readonly { message: string }[] = [], path: string | null = null) {
     importWarnings.value = warnings;
     automaton.value = newAutomaton;
     fileName.value = name;
+    filePath.value = path;
     resetIdentity();
     clearRecoveryDraft();
     selectedElement.value = null;
@@ -100,6 +102,7 @@ export const useDocumentStore = defineStore('document', () => {
     importWarnings.value = [];
     automaton.value = createEmptyAutomaton(kind);
     fileName.value = null;
+    filePath.value = null;
     resetIdentity();
     clearRecoveryDraft();
     selectedElement.value = null;
@@ -118,11 +121,12 @@ export const useDocumentStore = defineStore('document', () => {
     const raw = recoveryStorage()?.getItem(recoveryKey);
     if (!raw) return false;
     try {
-      const parsed = JSON.parse(raw) as { automaton?: AnyAutomaton; fileName?: string | null };
+      const parsed = JSON.parse(raw) as { automaton?: AnyAutomaton; fileName?: string | null; filePath?: string | null };
       if (!parsed.automaton || !['fa', 'pda', 'turing'].includes(parsed.automaton.kind)) return false;
       if (!Array.isArray(parsed.automaton.states) || !Array.isArray(parsed.automaton.transitions)) return false;
       automaton.value = parsed.automaton;
       fileName.value = parsed.fileName ?? null;
+      filePath.value = parsed.filePath ?? null;
       resetIdentity();
       revision.value = ++nextRevision;
       currentView.value = 'home';
@@ -165,10 +169,11 @@ export const useDocumentStore = defineStore('document', () => {
     return { documentId: documentId.value, revision: revision.value };
   }
 
-  function markSaved(token: DocumentRevisionToken, name?: string): boolean {
+  function markSaved(token: DocumentRevisionToken, name?: string, path?: string): boolean {
     if (token.documentId !== documentId.value) return false;
     savedRevision.value = token.revision;
     if (name) fileName.value = name;
+    if (path) filePath.value = path;
     if (isDirty.value) persistRecoveryDraft();
     else clearRecoveryDraft();
     return true;
@@ -178,6 +183,7 @@ export const useDocumentStore = defineStore('document', () => {
     currentView,
     automaton,
     fileName,
+    filePath,
     documentId,
     revision,
     savedRevision,

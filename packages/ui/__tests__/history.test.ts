@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { AddStateCommand } from '@jauto/core';
+import { AddStateCommand, createEmptyAutomaton } from '@jauto/core';
 import { useDocumentStore } from '../src/stores/document';
 import { useHistoryStore } from '../src/stores/history';
 
@@ -60,5 +60,15 @@ describe('document and command history integration', () => {
     restored.resume();
     expect(restored.currentView).toBe('editor');
     expect(restored.automaton.states[0]?.name).toBe('saved from crash');
+  });
+
+  it('preserves an opened path and adopts the actual Save As result', () => {
+    const doc = useDocumentStore();
+    doc.loadAutomaton(createEmptyAutomaton('fa'), 'opened.jff', [], 'C:/machines/opened.jff');
+    expect(doc.filePath).toBe('C:/machines/opened.jff');
+    const token = doc.createRevisionToken();
+    expect(doc.markSaved(token, 'chosen.jff', 'D:/exports/chosen.jff')).toBe(true);
+    expect(doc.fileName).toBe('chosen.jff');
+    expect(doc.filePath).toBe('D:/exports/chosen.jff');
   });
 });

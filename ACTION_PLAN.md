@@ -109,9 +109,9 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Add recoverable drafts, reload/close protection, and a Resume path from Home.
 - [x] Track document identity, current revision, and saved revision rather than a manually toggled dirty flag.
 - [x] Bind asynchronous save completion to the document revision actually saved.
-- [ ] Preserve desktop paths and actual chosen filenames; distinguish Save from Save As.
-- [ ] Handle cancellation, false save results, and errors without clearing unsaved state.
-- [ ] Display actionable open/save/export errors instead of relying on console output.
+- [x] Preserve desktop paths and actual chosen filenames; distinguish Save from Save As.
+- [x] Handle cancellation, false save results, and errors without clearing unsaved state.
+- [x] Display actionable open/save/export errors instead of relying on console output.
 - [ ] Resolve inspector drafts consistently before saving, starting simulation, changing selection, or undoing.
 - [ ] Make undo restore exact graph structure and order; test undo back to the saved revision.
 
@@ -252,5 +252,6 @@ Before calling the automata milestone dependable:
 - Transition-semantics regressions: implemented complete FA/PDA string reads, prefix-aware NFA branching, PDA stack-string operations with JFLAP's initial `Z`, and idempotent initial acceptance. Added regressions for string labels, epsilon cycles, nondeterminism, malformed documents, zero-step/resource limits, and vendor PDA languages. Validation: 41 core, 35 simulator, 11 UI, and 46 JFF tests passed; workspace type checks and lint passed.
 - Revision-based document state: replaced the manual dirty flag with document identity plus current/saved revisions, preserved revisions across undo/redo, kept drag previews outside history, and bound asynchronous save completion to the captured document revision. Validation: 12 UI tests passed; workspace type checks and lint passed.
 - Protected document lifecycle: routed New/Open through a shared Save/Discard/Cancel decision, retained work when saving fails or the user cancels, added browser reload/close protection, persisted unsaved recovery drafts, and exposed Resume on Home. Home navigation retains the current document rather than discarding it. Validation: 19 UI tests passed; workspace type checks and lint passed.
+- File identity and save behavior: carried desktop paths through open/save, made Save overwrite the current path while Save As opens the chooser, adopted the filename actually selected, retained dirty state on cancellation/failure, and surfaced save/export errors to users. Validation: 4 file-service and 20 UI tests passed; Rust check/format, workspace type checks and lint passed.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
