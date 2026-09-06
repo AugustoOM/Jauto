@@ -8,7 +8,7 @@ This table records the audited baseline. Update a row only after its independent
 
 | Document or feature | Import | Preservation | Execution |
 | --- | --- | --- | --- |
-| Finite automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | DFA subset; NFA engine is not connected to the editor |
+| Finite automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests; representative export reopened by JFLAP 7.1 | DFA and single-symbol NFA execution, including epsilon closure |
 | Pushdown automata | Validated structure and semantic fields | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Initial stack, string operations and branching require repair |
 | Single-tape Turing machines | Validated literal single-tape subset | Integer export IDs, XML entities, whitespace and layout round-trip in automated tests | Deterministic literal-symbol subset |
 | Notes and transition control points | Preserved | Round-trip covered by automated tests | Layout only; editing UI is pending |
@@ -39,7 +39,7 @@ The first dependable milestone covers finite automata (including nondeterminism 
 
 Fixtures and their provenance are version-controlled so normal tests do not depend on live downloads. Native/JFLAP checks that require external runtimes must be reported separately when unavailable; they must not silently pass.
 
-Current automated exchange checks validate exported XML independently and enforce JFLAP-compatible integer state IDs. Reopening generated files in the JFLAP 7.1 application is still a manual/external conformance gate and remains pending.
+Current automated exchange checks validate exported XML independently and enforce JFLAP-compatible integer state IDs. A representative multi-state export has also been decoded by JFLAP 7.1 itself; see [the recorded evidence](conformance/JFLAP_7_1.md).
 
 ## References
 

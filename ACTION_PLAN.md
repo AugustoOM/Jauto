@@ -73,8 +73,8 @@ No source or configuration files were changed during the audit. Native installer
 - [x] Target JFLAP 7.1 explicitly and publish a compatibility matrix for import, preservation, and execution.
 - [x] Define supported transition syntax, epsilon/blank conventions, acceptance policies, and unsupported-feature behavior.
 - [x] Start with FA/NFA, PDA, and single-tape TM as the first compatibility milestone.
-- [ ] Build a conformance suite from official JFLAP files and independently established expected outcomes.
-- [ ] Verify Jauto-created exports in JFLAP, including files with multiple new states.
+- [x] Build a conformance suite from official JFLAP files and independently established expected outcomes.
+- [x] Verify Jauto-created exports in JFLAP, including files with multiple new states.
 - [ ] Add regression cases for the confirmed defects, including empty input, string transitions, epsilon cycles, nondeterminism, malformed XML, and resource exhaustion.
 - [x] Enable Vue linting and meaningful UI/store/file-service integration tests.
 - [x] Add pull-request checks for tests, lint, type checking, and builds.
@@ -248,5 +248,6 @@ Before calling the automata milestone dependable:
 - Keyboard safety: centralized editable-target, default-prevention and IME-composition guards for canvas commands and application undo/redo shortcuts. Validation: 8 UI tests passed; workspace type checks and lint passed.
 - NFA editor execution: routed nondeterministic finite automata to the NFA runner, exposed epsilon-closure branch states in the canvas highlights, and derived the initial status from the runner so empty-input acceptance is immediate. Validation: 11 UI tests passed; workspace type checks and lint passed.
 - Bounded simulation outcomes: added an explicit `step-limit` run outcome, preserved the current configuration for zero-step runs, and removed the shared `run(0)` crash from all four runners. Validation: 30 simulator tests passed; workspace type checks and lint passed.
+- Vendor conformance corpus: retained official JFLAP NFA, PDA, and TM examples with provenance and independent language expectations; added execution and graph-preservation checks. A four-state Jauto export with colliding-style internal IDs was reopened successfully by JFLAP 7.1's own XML decoder. Validation: 44 JFF tests passed; JFLAP returned `automata.fsa.FiniteStateAutomaton` for the generated export.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
