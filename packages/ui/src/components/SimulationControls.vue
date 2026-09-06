@@ -22,6 +22,20 @@ function handleReset() {
 function handleNextStep() {
   sim.nextStep(docStore.automaton);
 }
+
+function stateText(config: Record<string, unknown>): string {
+  if (typeof config.currentState === 'string') return config.currentState;
+  if (config.activeStates instanceof Set) return [...config.activeStates].join(', ');
+  return '—';
+}
+
+function consumedText(config: Record<string, unknown>): string {
+  return sim.input.slice(0, Number(config.inputIndex) || 0) || 'ε';
+}
+
+function remainingText(config: Record<string, unknown>): string {
+  return typeof config.remainingInput === 'string' ? config.remainingInput || 'ε' : '—';
+}
 </script>
 
 <template>
@@ -85,8 +99,8 @@ function handleNextStep() {
     </div>
     <div v-if="sim.isActive" class="sim-controls__status">
       <span class="sim-controls__step">Step {{ sim.stepIndex }}</span>
-      <span v-if="sim.activeTransition" class="sim-controls__detail">
-        {{ sim.activeTransition.label }}
+      <span v-if="sim.transitionHighlights.length" class="sim-controls__detail">
+        {{ sim.transitionHighlights.map((transition) => `${transition.transitionId}: ${transition.label}`).join(' | ') }}
       </span>
       <span
         class="sim-controls__result"
@@ -103,6 +117,32 @@ function handleNextStep() {
            sim.status === 'canceled' ? 'Canceled' : 'Rejected' }}
       </span>
       <span v-if="sim.errorMessage" class="sim-controls__detail">{{ sim.errorMessage }}</span>
+    </div>
+    <div v-if="sim.isActive && sim.activeConfigurations.length" class="sim-controls__trace" aria-live="polite">
+      <div class="sim-controls__trace-title">
+        Active configurations ({{ sim.activeConfigurations.length }})
+        <span v-if="sim.activeTraceIndex < sim.executionIndex">
+          · replay {{ sim.activeTraceIndex }}/{{ sim.executionIndex }}
+        </span>
+      </div>
+      <div class="sim-controls__branches">
+        <div v-for="branch in sim.activeConfigurations" :key="branch.id" class="sim-controls__branch">
+          <strong>{{ branch.id }}</strong>
+          <span>state {{ stateText(branch.config) }}</span>
+          <span v-if="'inputIndex' in branch.config">consumed {{ consumedText(branch.config) }} · remaining {{ remainingText(branch.config) }}</span>
+          <span v-if="Array.isArray(branch.config.stack)">stack [{{ branch.config.stack.join(', ') }}]</span>
+          <span v-if="Array.isArray(branch.config.tape)" class="sim-controls__tape">
+            tape
+            <template v-for="(symbol, index) in branch.config.tape" :key="index">
+              <b :class="{ 'sim-controls__head': index === branch.config.headPosition }">{{ symbol }}</b>
+            </template>
+          </span>
+          <span>path {{ branch.path.length ? branch.path.join(' → ') : 'initial' }}</span>
+        </div>
+      </div>
+      <div v-if="sim.acceptingPath.length" class="sim-controls__witness">
+        Accepting witness: {{ sim.acceptingPath.join(' → ') }}
+      </div>
     </div>
     <div v-if="sim.isActive" class="sim-controls__speed">
       <label class="sim-controls__label">Speed</label>
@@ -249,5 +289,61 @@ function handleNextStep() {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   width: 50px;
+}
+
+.sim-controls__trace {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sim-controls__trace-title,
+.sim-controls__witness {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sim-controls__branches {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sim-controls__branch {
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font: 11px/1.35 var(--font-mono);
+}
+
+.sim-controls__tape {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sim-controls__tape b {
+  min-width: 17px;
+  padding: 1px 3px;
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.sim-controls__tape .sim-controls__head {
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-primary);
+}
+
+.sim-controls__witness {
+  color: var(--color-success);
+  font-family: var(--font-mono);
 }
 </style>
