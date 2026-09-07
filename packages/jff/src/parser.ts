@@ -24,7 +24,8 @@ const xmlParser = new XMLParser({
 
 export function parseJFF(xml: string): ParseResult {
   if (xml.length > 5_000_000) throw new JFFParseError('Document exceeds the 5 MB import limit');
-  if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new JFFParseError('DTD and custom XML entities are not supported');
+  if (/<!DOCTYPE|<!ENTITY/i.test(xml))
+    throw new JFFParseError('DTD and custom XML entities are not supported');
   const valid = XMLValidator.validate(xml);
   if (valid !== true) throw new JFFParseError(`Invalid XML: ${valid.err.msg}`);
   const parsed = xmlNode(xmlParser.parse(xml), 'document');
@@ -41,29 +42,45 @@ export function parseJFF(xml: string): ParseResult {
     throw new JFFParseError('Mixed nested and legacy automaton structures are not supported');
   }
   const node = 'automaton' in structure ? xmlNode(structure.automaton, 'automaton') : structure;
-  checkKeys(node, node === structure ? ['type', 'tapes', 'state', 'transition', 'note'] : ['tapes', 'state', 'transition', 'note'], 'automaton');
+  checkKeys(
+    node,
+    node === structure
+      ? ['type', 'tapes', 'state', 'transition', 'note']
+      : ['tapes', 'state', 'transition', 'note'],
+    'automaton',
+  );
   if (kind !== 'turing' && ('tapes' in structure || 'tapes' in node)) {
     throw new JFFParseError('Tape declarations are only supported for Turing machines');
   }
   const tapes = xmlNumber(structure.tapes ?? node.tapes, 'tapes', 1);
-  if (tapes !== 1 || xmlNumber(node.tapes, 'tapes', 1) !== 1) {
-    throw new JFFParseError('Only single-tape documents are currently supported');
-  }
+  if (!Number.isInteger(tapes) || tapes < 1 || tapes > 8)
+    throw new JFFParseError('Tape count must be between 1 and 8');
   const states = parseStates(node);
   const notes = xmlElements(node.note, 'note').map((note) => {
     checkKeys(note, ['text', 'x', 'y'], 'note');
-    return { text: xmlText(note.text, 'text'), x: xmlNumber(note.x, 'x'), y: xmlNumber(note.y, 'y') };
+    return {
+      text: xmlText(note.text, 'text'),
+      x: xmlNumber(note.x, 'x'),
+      y: xmlNumber(note.y, 'y'),
+    };
   });
   const base = { states, ...(notes.length ? { meta: { notes } } : {}) };
   let automaton: AnyAutomaton;
   switch (kind) {
-    case 'fa': automaton = { ...base, kind, transitions: parseFATransitions(node) }; break;
-    case 'pda': automaton = { ...base, kind, transitions: parsePDATransitions(node) }; break;
-    case 'turing': automaton = { ...base, kind, tapes, transitions: parseTMTransitions(node) }; break;
+    case 'fa':
+      automaton = { ...base, kind, transitions: parseFATransitions(node) };
+      break;
+    case 'pda':
+      automaton = { ...base, kind, transitions: parsePDATransitions(node) };
+      break;
+    case 'turing':
+      automaton = { ...base, kind, tapes, transitions: parseTMTransitions(node, tapes) };
+      break;
   }
   const errors = validateStructure(automaton);
   if (errors.length) throw new JFFParseError(errors.map((error) => error.message).join('; '));
   const warnings: JFFValidationWarning[] = [];
-  if (!states.some((state) => state.isInitial)) warnings.push(new JFFValidationWarning('No initial state found; set one before simulation'));
+  if (!states.some((state) => state.isInitial))
+    warnings.push(new JFFValidationWarning('No initial state found; set one before simulation'));
   return { automaton, warnings };
 }

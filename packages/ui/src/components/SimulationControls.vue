@@ -82,25 +82,23 @@ function remainingText(config: Record<string, unknown>): string {
         >
           <Play :size="13" /> Play
         </button>
-        <button
-          v-if="sim.isRunning"
-          class="sim-controls__btn"
-          @click="sim.pause()"
-        >
+        <button v-if="sim.isRunning" class="sim-controls__btn" @click="sim.pause()">
           <Pause :size="13" /> Pause
         </button>
         <button class="sim-controls__btn" @click="handleReset">
           <RotateCcw :size="13" /> Reset
         </button>
-        <button class="sim-controls__btn" @click="sim.stop()">
-          <Square :size="13" /> Stop
-        </button>
+        <button class="sim-controls__btn" @click="sim.stop()"><Square :size="13" /> Stop</button>
       </template>
     </div>
     <div v-if="sim.isActive" class="sim-controls__status">
       <span class="sim-controls__step">Step {{ sim.stepIndex }}</span>
       <span v-if="sim.transitionHighlights.length" class="sim-controls__detail">
-        {{ sim.transitionHighlights.map((transition) => `${transition.transitionId}: ${transition.label}`).join(' | ') }}
+        {{
+          sim.transitionHighlights
+            .map((transition) => `${transition.transitionId}: ${transition.label}`)
+            .join(' | ')
+        }}
       </span>
       <span
         class="sim-controls__result"
@@ -109,16 +107,29 @@ function remainingText(config: Record<string, unknown>): string {
           'sim-controls__result--rejected': sim.status !== 'running' && sim.status !== 'accepted',
         }"
       >
-        {{ sim.status === 'running' ? 'Running...' :
-           sim.status === 'accepted' ? 'Accepted' :
-           sim.status === 'halted' ? 'Halted' :
-           sim.status === 'invalid' ? 'Invalid machine' :
-           sim.status === 'incomplete' ? 'Incomplete' :
-           sim.status === 'canceled' ? 'Canceled' : 'Rejected' }}
+        {{
+          sim.status === 'running'
+            ? 'Running...'
+            : sim.status === 'accepted'
+              ? 'Accepted'
+              : sim.status === 'halted'
+                ? 'Halted'
+                : sim.status === 'invalid'
+                  ? 'Invalid machine'
+                  : sim.status === 'incomplete'
+                    ? 'Incomplete'
+                    : sim.status === 'canceled'
+                      ? 'Canceled'
+                      : 'Rejected'
+        }}
       </span>
       <span v-if="sim.errorMessage" class="sim-controls__detail">{{ sim.errorMessage }}</span>
     </div>
-    <div v-if="sim.isActive && sim.activeConfigurations.length" class="sim-controls__trace" aria-live="polite">
+    <div
+      v-if="sim.isActive && sim.activeConfigurations.length"
+      class="sim-controls__trace"
+      aria-live="polite"
+    >
       <div class="sim-controls__trace-title">
         Active configurations ({{ sim.activeConfigurations.length }})
         <span v-if="sim.activeTraceIndex < sim.executionIndex">
@@ -126,18 +137,47 @@ function remainingText(config: Record<string, unknown>): string {
         </span>
       </div>
       <div class="sim-controls__branches">
-        <div v-for="branch in sim.activeConfigurations" :key="branch.id" class="sim-controls__branch">
+        <div
+          v-for="branch in sim.activeConfigurations"
+          :key="branch.id"
+          class="sim-controls__branch"
+        >
           <strong>{{ branch.id }}</strong>
           <span>state {{ stateText(branch.config) }}</span>
-          <span v-if="'inputIndex' in branch.config">consumed {{ consumedText(branch.config) }} · remaining {{ remainingText(branch.config) }}</span>
-          <span v-if="Array.isArray(branch.config.stack)">stack [{{ branch.config.stack.join(', ') }}]</span>
+          <span v-if="'inputIndex' in branch.config"
+            >consumed {{ consumedText(branch.config) }} · remaining
+            {{ remainingText(branch.config) }}</span
+          >
+          <span v-if="Array.isArray(branch.config.stack)"
+            >stack [{{ branch.config.stack.join(', ') }}]</span
+          >
           <span v-if="Array.isArray(branch.config.tape)" class="sim-controls__tape">
             tape
             <template v-for="(symbol, index) in branch.config.tape" :key="index">
-              <b :class="{ 'sim-controls__head': index === branch.config.headPosition }">{{ symbol }}</b>
+              <b :class="{ 'sim-controls__head': index === branch.config.headPosition }">{{
+                symbol
+              }}</b>
             </template>
           </span>
-          <span>via {{ branch.path.length ? branch.path.join(', ') : 'initial configuration' }}</span>
+          <span
+            v-for="(tape, tapeIndex) in (branch.config.tapes ?? []).slice(1)"
+            :key="tapeIndex"
+            class="sim-controls__tape"
+          >
+            tape {{ Number(tapeIndex) + 2 }}
+            <template v-for="(symbol, index) in tape" :key="index">
+              <b
+                :class="{
+                  'sim-controls__head':
+                    index === branch.config.headPositions[Number(tapeIndex) + 1],
+                }"
+                >{{ symbol }}</b
+              >
+            </template>
+          </span>
+          <span
+            >via {{ branch.path.length ? branch.path.join(', ') : 'initial configuration' }}</span
+          >
         </div>
       </div>
       <div v-if="sim.acceptingPath.length" class="sim-controls__witness">
@@ -158,14 +198,24 @@ function remainingText(config: Record<string, unknown>): string {
     </div>
     <details v-if="!sim.isActive" class="sim-controls__batch">
       <summary>Batch input testing</summary>
-      <label class="sim-controls__label" for="batch-inputs">One input per line (a blank line tests ε)</label>
+      <label class="sim-controls__label" for="batch-inputs"
+        >One input per line (a blank line tests ε)</label
+      >
       <textarea id="batch-inputs" v-model="sim.batchInput" rows="4" class="sim-controls__input" />
       <button class="sim-controls__btn" @click="sim.runBatch(docStore.automaton)">Run batch</button>
       <table v-if="sim.batchResults.length" class="sim-controls__results">
-        <thead><tr><th>Input</th><th>Outcome</th><th>Steps</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Input</th>
+            <th>Outcome</th>
+            <th>Steps</th>
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="(result, index) in sim.batchResults" :key="`${index}:${result.input}`">
-            <td>{{ result.input || 'ε' }}</td><td>{{ result.outcome }}</td><td>{{ result.steps }}</td>
+            <td>{{ result.input || 'ε' }}</td>
+            <td>{{ result.outcome }}</td>
+            <td>{{ result.steps }}</td>
           </tr>
         </tbody>
       </table>

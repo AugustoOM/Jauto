@@ -26,6 +26,7 @@
     "fast-xml-parser": "^5.8.0"
   },
   "devDependencies": {
+    "@jauto/simulator": "workspace:*",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vite-plugin-dts": "^5.0.2",

@@ -22,8 +22,10 @@ export function getStackAlphabet(automaton: PushdownAutomaton): ReadonlySet<stri
 export function getTapeAlphabet(automaton: TuringMachine): ReadonlySet<string> {
   const alphabet = new Set<string>(['\u25A1']);
   for (const transition of automaton.transitions) {
-    addSymbols(alphabet, transition.read || '\u25A1');
-    addSymbols(alphabet, transition.write || '\u25A1');
+    for (const action of transition.tapeActions ?? [transition]) {
+      addSymbols(alphabet, action.read || '\u25A1');
+      addSymbols(alphabet, action.write || '\u25A1');
+    }
   }
   return alphabet;
 }

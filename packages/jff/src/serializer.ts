@@ -10,9 +10,6 @@ import { serializeTMTransitions } from './serializers/tm';
 export function serializeJFF(automaton: AnyAutomaton): string {
   const errors = validateStructure(automaton);
   if (errors.length) throw new JFFSerializeError(errors.map((error) => error.message).join('; '));
-  if (automaton.kind === 'turing' && automaton.tapes !== 1) {
-    throw new JFFSerializeError('Only single-tape documents are currently supported');
-  }
   const ids = new Map<string, string>();
   const used = new Set<string>();
   for (const state of automaton.states) {
@@ -36,7 +33,7 @@ export function serializeJFF(automaton: AnyAutomaton): string {
   lines.push('<!--Created with Jauto.-->');
   lines.push('<structure>');
   lines.push(`\t<type>${automaton.kind}</type>`);
-  if (automaton.kind === 'turing') lines.push('\t<tapes>1</tapes>');
+  if (automaton.kind === 'turing') lines.push(`\t<tapes>${automaton.tapes}</tapes>`);
   lines.push('\t<automaton>');
 
   const statesXml = serializeStates(automaton.states.map((s) => ({ ...s, id: ids.get(s.id)! })));
@@ -51,13 +48,19 @@ export function serializeJFF(automaton: AnyAutomaton): string {
       transitionsXml = serializePDATransitions(mapTransitions(automaton.transitions));
       break;
     case 'turing':
-      transitionsXml = serializeTMTransitions(mapTransitions(automaton.transitions));
+      transitionsXml = serializeTMTransitions(
+        mapTransitions(automaton.transitions),
+        automaton.tapes,
+      );
       break;
   }
   if (transitionsXml) lines.push(transitionsXml);
   for (const note of automaton.meta?.notes ?? []) {
-    if (!Number.isFinite(note.x) || !Number.isFinite(note.y)) throw new JFFSerializeError('Note coordinates must be finite');
-    lines.push(`\t\t<note><text>${escapeXml(note.text)}</text><x>${note.x}</x><y>${note.y}</y></note>`);
+    if (!Number.isFinite(note.x) || !Number.isFinite(note.y))
+      throw new JFFSerializeError('Note coordinates must be finite');
+    lines.push(
+      `\t\t<note><text>${escapeXml(note.text)}</text><x>${note.x}</x><y>${note.y}</y></note>`,
+    );
   }
 
   lines.push('\t</automaton>');

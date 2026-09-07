@@ -2,10 +2,7 @@ import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
 import type { TransitionHighlight } from '../stores/simulation';
 import { STATE_RADIUS } from '../constants';
-import {
-  getEdgeGeometry,
-  getSelfLoopGeometry,
-} from './transitionGeometry';
+import { getEdgeGeometry, getSelfLoopGeometry } from './transitionGeometry';
 import { buildRenderIndex, transitionGroupKey } from './renderIndex';
 
 const ARROW_SIZE = 6;
@@ -41,9 +38,19 @@ export function useCanvasRenderer() {
     options: RenderOptions,
   ) {
     frameCssCache = new Map();
-    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransitions = [] } = options;
+    const {
+      offsetX,
+      offsetY,
+      scale,
+      selected,
+      highlightedStates,
+      activeTransitions = [],
+    } = options;
 
-    const canvasBg = options.background === undefined ? readCssVar('--color-canvas-bg', '#111111') : options.background;
+    const canvasBg =
+      options.background === undefined
+        ? readCssVar('--color-canvas-bg', '#111111')
+        : options.background;
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
     const fontSans = readCssVar('--font-family', 'DM Sans, system-ui, sans-serif');
 
@@ -53,7 +60,8 @@ export function useCanvasRenderer() {
       ctx.fillRect(0, 0, width, height);
     }
 
-    if (options.showGrid !== false) drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
+    if (options.showGrid !== false)
+      drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
@@ -62,10 +70,10 @@ export function useCanvasRenderer() {
     const { statesById, transitionGroups } = buildRenderIndex(automaton);
     const margin = 100 / scale;
     const visible = {
-      minX: (-offsetX / scale) - margin,
-      minY: (-offsetY / scale) - margin,
-      maxX: ((width - offsetX) / scale) + margin,
-      maxY: ((height - offsetY) / scale) + margin,
+      minX: -offsetX / scale - margin,
+      minY: -offsetY / scale - margin,
+      maxX: (width - offsetX) / scale + margin,
+      maxY: (height - offsetY) / scale + margin,
     };
 
     for (const t of automaton.transitions) {
@@ -74,16 +82,32 @@ export function useCanvasRenderer() {
       if (!from || !to) continue;
       const controlX = typeof t.controlX === 'number' ? t.controlX : (from.x + to.x) / 2;
       const controlY = typeof t.controlY === 'number' ? t.controlY : (from.y + to.y) / 2;
-      if (!boundsIntersectViewport([from.x, to.x, controlX], [from.y, to.y, controlY], visible)) continue;
+      if (!boundsIntersectViewport([from.x, to.x, controlX], [from.y, to.y, controlY], visible))
+        continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
       const isActiveTransition = activeTransitions.some((active) => active.transitionId === t.id);
       const groupKey = transitionGroupKey(t.from, t.to);
-      drawTransition(ctx, from, to, t, transitionGroups.get(groupKey) ?? [t], isSelected, isActiveTransition, fontSans);
+      drawTransition(
+        ctx,
+        from,
+        to,
+        t,
+        transitionGroups.get(groupKey) ?? [t],
+        isSelected,
+        isActiveTransition,
+        fontSans,
+      );
     }
 
     for (const state of automaton.states) {
-      if (state.x < visible.minX || state.x > visible.maxX || state.y < visible.minY || state.y > visible.maxY) continue;
+      if (
+        state.x < visible.minX ||
+        state.x > visible.maxX ||
+        state.y < visible.minY ||
+        state.y > visible.maxY
+      )
+        continue;
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
       const simulationRole = getSimulationStateRole(state.id, activeTransitions);
@@ -110,8 +134,12 @@ export function useCanvasRenderer() {
     ys: readonly number[],
     viewport: { minX: number; minY: number; maxX: number; maxY: number },
   ) {
-    return Math.max(...xs) >= viewport.minX && Math.min(...xs) <= viewport.maxX &&
-      Math.max(...ys) >= viewport.minY && Math.min(...ys) <= viewport.maxY;
+    return (
+      Math.max(...xs) >= viewport.minX &&
+      Math.min(...xs) <= viewport.maxX &&
+      Math.max(...ys) >= viewport.minY &&
+      Math.min(...ys) <= viewport.maxY
+    );
   }
 
   function drawGrid(
@@ -186,7 +214,11 @@ export function useCanvasRenderer() {
 
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.16) : isHighlighted ? hlFill : stateFill;
+    ctx.fillStyle = roleColor
+      ? colorWithAlpha(roleColor, 0.16)
+      : isHighlighted
+        ? hlFill
+        : stateFill;
     ctx.fill();
     ctx.strokeStyle = roleColor ?? (isHighlighted || isSelected ? accent : strokeMain);
     ctx.lineWidth = roleColor ? 3.5 : isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
@@ -253,15 +285,7 @@ export function useCanvasRenderer() {
     ctx.fillStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
-      drawSelfLoop(
-        ctx,
-        from,
-        transition,
-        siblings,
-        fontSans,
-        isSelected,
-        isActiveTransition,
-      );
+      drawSelfLoop(ctx, from, transition, siblings, fontSans, isSelected, isActiveTransition);
       return;
     }
 
@@ -413,8 +437,12 @@ export function useCanvasRenderer() {
       return `${read}, ${pop} \u2192 ${push}`;
     }
     if ('write' in t && 'move' in t) {
-      const write = t.write || '\u25A1';
-      return `${read} \u2192 ${write}, ${t.move}`;
+      return (t.tapeActions ?? [t])
+        .map(
+          (action, index) =>
+            `${t.tapeActions ? `${index + 1}:` : ''}${action.read || '\u25A1'} \u2192 ${action.write || '\u25A1'}, ${action.move}`,
+        )
+        .join(' | ');
     }
     return read;
   }

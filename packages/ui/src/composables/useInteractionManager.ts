@@ -157,7 +157,10 @@ export function useInteractionManager(
 
     if (isDragging.value && dragStateId.value) {
       docStore.previewAutomaton(
-        updateState(docStore.automaton, dragStateId.value, { x: x - dragOffsetX.value, y: y - dragOffsetY.value }) as AnyAutomaton,
+        updateState(docStore.automaton, dragStateId.value, {
+          x: x - dragOffsetX.value,
+          y: y - dragOffsetY.value,
+        }) as AnyAutomaton,
       );
     }
 
@@ -198,9 +201,32 @@ export function useInteractionManager(
         const id = generateTransitionId(docStore.automaton.transitions);
         let transition;
         if (kind === 'pda') {
-          transition = { id, from: transitionSourceId.value, to: targetState.id, read: '', pop: '', push: '' };
+          transition = {
+            id,
+            from: transitionSourceId.value,
+            to: targetState.id,
+            read: '',
+            pop: '',
+            push: '',
+          };
         } else if (kind === 'turing') {
-          transition = { id, from: transitionSourceId.value, to: targetState.id, read: '', write: '', move: 'R' as const };
+          transition = {
+            id,
+            from: transitionSourceId.value,
+            to: targetState.id,
+            read: '',
+            write: '',
+            move: 'R' as const,
+            ...(docStore.automaton.tapes > 1
+              ? {
+                  tapeActions: Array.from({ length: docStore.automaton.tapes }, () => ({
+                    read: '',
+                    write: '',
+                    move: 'R' as const,
+                  })),
+                }
+              : {}),
+          };
         } else {
           transition = { id, from: transitionSourceId.value, to: targetState.id, read: '' };
         }
@@ -218,7 +244,10 @@ export function useInteractionManager(
   function cancelGesture() {
     if (isDragging.value && dragStateId.value) {
       docStore.previewAutomaton(
-        updateState(docStore.automaton, dragStateId.value, { x: dragStartX.value, y: dragStartY.value }) as AnyAutomaton,
+        updateState(docStore.automaton, dragStateId.value, {
+          x: dragStartX.value,
+          y: dragStartY.value,
+        }) as AnyAutomaton,
       );
     }
     isDragging.value = false;

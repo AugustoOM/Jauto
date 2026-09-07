@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import type { SimulationRunner, StepResult, SimulationStatus } from '@jauto/simulator';
-import { createDFARunner, createNFARunner, createPDARunner, createTMRunner } from '@jauto/simulator';
+import {
+  createDFARunner,
+  createNFARunner,
+  createPDARunner,
+  createTMRunner,
+} from '@jauto/simulator';
 import { isDeterministic } from '@jauto/core';
 import type { AnyAutomaton, AnyTransition, PushdownAutomaton, TuringMachine } from '@jauto/core';
 import { useDocumentStore } from './document';
@@ -47,7 +52,9 @@ export const useSimulationStore = defineStore('simulation', () => {
   function createRunnerFor(automaton: AnyAutomaton, inputStr: string) {
     switch (automaton.kind) {
       case 'fa':
-        return isDeterministic(automaton) ? createDFARunner(automaton, inputStr) : createNFARunner(automaton, inputStr);
+        return isDeterministic(automaton)
+          ? createDFARunner(automaton, inputStr)
+          : createNFARunner(automaton, inputStr);
       case 'pda':
         return createPDARunner(automaton as PushdownAutomaton, inputStr);
       case 'turing':
@@ -60,14 +67,21 @@ export const useSimulationStore = defineStore('simulation', () => {
   const transitionHighlights = computed<TransitionHighlight[]>(() => {
     if (!activeAutomaton || !activeSnapshot.value) return [];
     const ids = new Set(activeSnapshot.value.transitionIds);
-    return activeAutomaton.transitions.filter((transition) => ids.has(transition.id)).map(toHighlight);
+    return activeAutomaton.transitions
+      .filter((transition) => ids.has(transition.id))
+      .map(toHighlight);
   });
   const activeTransition = computed(() => transitionHighlights.value[0] ?? null);
   const activeConfigurations = computed(() => activeSnapshot.value?.configurations ?? []);
   const acceptingPath = computed(() => activeSnapshot.value?.acceptingPath ?? []);
 
   function toHighlight(transition: AnyTransition): TransitionHighlight {
-    return { transitionId: transition.id, sourceStateId: transition.from, targetStateId: transition.to, label: getTransitionLabel(transition) };
+    return {
+      transitionId: transition.id,
+      sourceStateId: transition.from,
+      targetStateId: transition.to,
+      label: getTransitionLabel(transition),
+    };
   }
 
   function displaySnapshot(index: number) {
@@ -79,7 +93,8 @@ export const useSimulationStore = defineStore('simulation', () => {
     const states = new Set<string>();
     for (const branch of snapshot.configurations) {
       const config = branch.config as Record<string, unknown>;
-      if (typeof config.currentState === 'string' && config.currentState) states.add(config.currentState);
+      if (typeof config.currentState === 'string' && config.currentState)
+        states.add(config.currentState);
       if (config.activeStates instanceof Set) {
         for (const state of config.activeStates) if (typeof state === 'string') states.add(state);
       }
@@ -136,7 +151,11 @@ export const useSimulationStore = defineStore('simulation', () => {
 
   function play(automaton: AnyAutomaton) {
     if (!runner) start(automaton);
-    if (!runner || (activeTraceIndex.value >= executionIndex.value && executionStatus !== 'running')) return;
+    if (
+      !runner ||
+      (activeTraceIndex.value >= executionIndex.value && executionStatus !== 'running')
+    )
+      return;
     activeAutomaton = automaton;
     isRunning.value = true;
     intervalId = setInterval(() => {
@@ -168,7 +187,9 @@ export const useSimulationStore = defineStore('simulation', () => {
     highlightedStates.value = new Set();
   }
 
-  function invalidate(message = 'The machine changed. Restart the simulation to use the new definition.') {
+  function invalidate(
+    message = 'The machine changed. Restart the simulation to use the new definition.',
+  ) {
     if (!runner) return;
     pause();
     runner.cancel();
@@ -184,20 +205,32 @@ export const useSimulationStore = defineStore('simulation', () => {
   }
 
   function runBatch(automaton: AnyAutomaton, maxSteps = 10000) {
-    batchResults.value = batchInput.value.split(/\r?\n/).map((value) => value.trim()).map((value) => {
-      try {
-        const batchRunner = createRunnerFor(automaton, value);
-        let result = batchRunner.currentStep;
-        let steps = 0;
-        while (result.status === 'running' && steps < maxSteps) {
-          result = batchRunner.step();
-          steps++;
+    batchResults.value = batchInput.value
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .map((value) => {
+        try {
+          const batchRunner = createRunnerFor(automaton, value);
+          let result = batchRunner.currentStep;
+          let steps = 0;
+          while (result.status === 'running' && steps < maxSteps) {
+            result = batchRunner.step();
+            steps++;
+          }
+          return {
+            input: value,
+            outcome: result.status === 'running' ? ('incomplete' as const) : result.status,
+            steps,
+          };
+        } catch (error) {
+          return {
+            input: value,
+            outcome: 'invalid' as const,
+            steps: 0,
+            message: error instanceof Error ? error.message : String(error),
+          };
         }
-        return { input: value, outcome: result.status === 'running' ? 'incomplete' as const : result.status, steps };
-      } catch (error) {
-        return { input: value, outcome: 'invalid' as const, steps: 0, message: error instanceof Error ? error.message : String(error) };
-      }
-    });
+      });
   }
 
   watch(speed, () => {
@@ -209,38 +242,78 @@ export const useSimulationStore = defineStore('simulation', () => {
     }, speed.value);
   });
 
-  watch(() => document.automaton, (automaton) => {
-    if (!runner || activeSemanticSignature === null) return;
-    const nextSignature = semanticSignature(automaton);
-    if (nextSignature !== activeSemanticSignature) invalidate();
-    else activeAutomaton = automaton;
-  });
+  watch(
+    () => document.automaton,
+    (automaton) => {
+      if (!runner || activeSemanticSignature === null) return;
+      const nextSignature = semanticSignature(automaton);
+      if (nextSignature !== activeSemanticSignature) invalidate();
+      else activeAutomaton = automaton;
+    },
+  );
 
   const isActive = computed(() => status.value !== null);
   const canGoPrevious = computed(() => activeTraceIndex.value > 0);
-  const canGoNext = computed(() => activeTraceIndex.value < executionIndex.value || executionStatus === 'running');
+  const canGoNext = computed(
+    () => activeTraceIndex.value < executionIndex.value || executionStatus === 'running',
+  );
 
   function semanticSignature(automaton: AnyAutomaton): string {
     return JSON.stringify({
       kind: automaton.kind,
       tapes: automaton.kind === 'turing' ? automaton.tapes : undefined,
       states: automaton.states.map(({ x: _x, y: _y, ...state }) => state),
-      transitions: automaton.transitions.map(({ controlX: _controlX, controlY: _controlY, ...transition }) => transition),
+      transitions: automaton.transitions.map(
+        ({ controlX: _controlX, controlY: _controlY, ...transition }) => transition,
+      ),
     });
   }
 
   function getTransitionLabel(transition: AnyTransition): string {
     const read = transition.read || 'ε';
-    if ('pop' in transition && 'push' in transition) return `${read}, ${transition.pop || 'ε'} -> ${transition.push || 'ε'}`;
-    if ('write' in transition && 'move' in transition) return `${read} -> ${transition.write || '□'}, ${transition.move}`;
+    if ('pop' in transition && 'push' in transition)
+      return `${read}, ${transition.pop || 'ε'} -> ${transition.push || 'ε'}`;
+    if ('write' in transition && 'move' in transition) {
+      return (transition.tapeActions ?? [transition])
+        .map(
+          (action, index) =>
+            `${transition.tapeActions ? `T${index + 1}: ` : ''}${action.read || '□'} -> ${action.write || '□'}, ${action.move}`,
+        )
+        .join(' | ');
+    }
     return read;
   }
 
   return {
-    input, isRunning, isActive, status, errorMessage, stepIndex, highlightedStates,
-    activeTransition, activeConfigurations, activeSnapshot, acceptingPath,
-    activeTraceIndex, executionIndex, transitionHighlights, canGoPrevious, canGoNext,
-    speed, traceSteps, batchInput, batchResults, start, step: (_automaton: AnyAutomaton) => executeStep(), nextStep,
-    previousStep, play, pause, stop, invalidate, reset, runBatch,
+    input,
+    isRunning,
+    isActive,
+    status,
+    errorMessage,
+    stepIndex,
+    highlightedStates,
+    activeTransition,
+    activeConfigurations,
+    activeSnapshot,
+    acceptingPath,
+    activeTraceIndex,
+    executionIndex,
+    transitionHighlights,
+    canGoPrevious,
+    canGoNext,
+    speed,
+    traceSteps,
+    batchInput,
+    batchResults,
+    start,
+    step: (_automaton: AnyAutomaton) => executeStep(),
+    nextStep,
+    previousStep,
+    play,
+    pause,
+    stop,
+    invalidate,
+    reset,
+    runBatch,
   };
 });

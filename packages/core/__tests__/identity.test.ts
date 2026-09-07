@@ -23,15 +23,33 @@ describe('document identity invariants', () => {
 
   it('diagnoses damaged imports without rejecting an empty editable draft', () => {
     expect(validateStructure(createEmptyAutomaton('fa'))).toEqual([]);
-    const fa: FiniteAutomaton = { kind: 'fa', states: [state, { ...state, x: NaN }], transitions: [{ id: 't', from: 's0', to: 'missing', read: '' }] };
+    const fa: FiniteAutomaton = {
+      kind: 'fa',
+      states: [state, { ...state, x: NaN }],
+      transitions: [{ id: 't', from: 's0', to: 'missing', read: '' }],
+    };
     const diagnostics = validateStructure(fa);
     expect(diagnostics.map((d) => d.message).join('\n')).toMatch(/Duplicate.*state ID/);
     expect(diagnostics.some((d) => d.stateId === 's0' && d.message.includes('finite'))).toBe(true);
-    expect(diagnostics.some((d) => d.transitionId === 't' && d.message.includes('missing'))).toBe(true);
+    expect(diagnostics.some((d) => d.transitionId === 't' && d.message.includes('missing'))).toBe(
+      true,
+    );
   });
 
   it('validates runtime TM properties', () => {
-    const tm = { kind: 'turing', tapes: 0, states: [state], transitions: [{ id: 't', from: 's0', to: 's0', read: '', write: '', move: 'UP' }] } as unknown as TuringMachine;
-    expect(validateStructure(tm)).toHaveLength(2);
+    const tm = {
+      kind: 'turing',
+      tapes: 0,
+      states: [state],
+      transitions: [{ id: 't', from: 's0', to: 's0', read: '', write: '', move: 'UP' }],
+    } as unknown as TuringMachine;
+    const messages = validateStructure(tm).map((diagnostic) => diagnostic.message);
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        'Tape count must be a positive integer',
+        'TM transition action count must match the tape count',
+        'TM movement must be L, R or S',
+      ]),
+    );
   });
 });

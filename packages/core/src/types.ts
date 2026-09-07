@@ -38,6 +38,13 @@ export interface TMTransition extends TransitionLayout {
   readonly read: string;
   readonly write: string;
   readonly move: 'L' | 'R' | 'S';
+  readonly tapeActions?: readonly TMTapeAction[];
+}
+
+export interface TMTapeAction {
+  readonly read: string;
+  readonly write: string;
+  readonly move: 'L' | 'R' | 'S';
 }
 
 export type AnyTransition = FATransition | PDATransition | TMTransition;
