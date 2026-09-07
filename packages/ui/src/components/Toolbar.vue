@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, inject, ref, type Component } from 'vue';
-import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from 'lucide-vue-next';
+import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from '@lucide/vue';
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 import { saveDocumentKey } from '../injectionKeys';
+import ConversionTools from './ConversionTools.vue';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
@@ -39,8 +40,8 @@ function selectTool(tool: EditorTool) {
 </script>
 
 <template>
-  <div class="toolbar">
-    <div class="toolbar__tools">
+  <div class="toolbar" role="toolbar" aria-label="Automaton editor tools">
+    <div class="toolbar__tools" role="group" aria-label="Editing tools">
       <button
         v-for="tool in tools"
         :key="tool.id"
@@ -50,12 +51,15 @@ function selectTool(tool: EditorTool) {
           'toolbar__btn--modifier': modifierTool === tool.id,
         }"
         :title="`${tool.label} (${tool.shortcut})`"
+        :aria-pressed="docStore.activeTool === tool.id"
         @click="selectTool(tool.id)"
       >
         <component :is="tool.icon" :size="14" class="toolbar__icon" />
         <span class="toolbar__label">{{ tool.label }}</span>
       </button>
     </div>
+    <div class="toolbar__separator" />
+    <ConversionTools />
     <div class="toolbar__separator" />
     <div class="toolbar__actions">
       <button
@@ -101,6 +105,26 @@ function selectTool(tool: EditorTool) {
   padding: 6px 12px;
   background: var(--color-bg-tertiary);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.toolbar__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    align-items: stretch;
+    overflow-x: auto;
+  }
+  .toolbar__tools,
+  .toolbar__actions {
+    flex-wrap: wrap;
+  }
+  .toolbar__label {
+    font-size: 11px;
+  }
 }
 
 .toolbar__tools,
@@ -128,7 +152,9 @@ function selectTool(tool: EditorTool) {
   font-size: 12px;
   cursor: pointer;
   user-select: none;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .toolbar__btn:hover:not(:disabled) {

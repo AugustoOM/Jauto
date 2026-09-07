@@ -1,4 +1,4 @@
-import type { FileService, FileOpenResult } from '@jauto/file-io';
+import type { FileService, FileOpenResult, FileSaveResult } from '@jauto/file-io';
 import { invoke } from '@tauri-apps/api/core';
 
 type NativeOpenResult = {
@@ -11,15 +11,15 @@ export class DesktopFileService implements FileService {
   async openFile(): Promise<FileOpenResult | null> {
     const result = await invoke<NativeOpenResult | null>('open_file');
     if (!result) return null;
-    return { name: result.name, content: result.content };
+    return { name: result.name, content: result.content, path: result.path };
   }
 
-  async saveFile(name: string, content: string): Promise<boolean> {
-    const result = await invoke<string | null>('save_file', {
+  async saveFile(name: string, content: string, path?: string): Promise<FileSaveResult | null> {
+    return invoke<FileSaveResult | null>('save_file', {
       content,
       defaultName: name,
+      currentPath: path ?? null,
     });
-    return result !== null;
   }
 
   async exportImage(blob: Blob, name: string): Promise<boolean> {

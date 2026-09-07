@@ -78,4 +78,13 @@ describe('DFA Runner', () => {
     const result = runner.run();
     expect(result.accepted).toBe(false);
   });
+
+  it('consumes a complete multi-character transition label', () => {
+    const stringDfa = buildDFA(
+      [s('0', { isInitial: true }), s('1', { isFinal: true })],
+      [t('t0', '0', '1', 'hello')],
+    );
+    expect(createDFARunner(stringDfa, 'hello').run().outcome).toBe('accepted');
+    expect(createDFARunner(stringDfa, 'h').run().outcome).toBe('rejected');
+  });
 });

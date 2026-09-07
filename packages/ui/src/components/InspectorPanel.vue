@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
-import { Check } from 'lucide-vue-next';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { Check } from '@lucide/vue';
 import { useDocumentStore } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 import { UpdateStateCommand, UpdateTransitionCommand } from '@jauto/core';
@@ -79,8 +79,16 @@ watch(
       d.push = t.push;
     }
     if ('write' in t && 'move' in t) {
-      d.write = t.write;
-      d.move = t.move;
+      if (t.tapeActions) {
+        for (const [index, action] of t.tapeActions.entries()) {
+          d[`tape${index}.read`] = action.read;
+          d[`tape${index}.write`] = action.write;
+          d[`tape${index}.move`] = action.move;
+        }
+      } else {
+        d.write = t.write;
+        d.move = t.move;
+      }
     }
     transitionDraft.value = d;
   },
@@ -95,7 +103,7 @@ watch(
     const input =
       target.type === 'state'
         ? stateNameInput.value
-        : transitionInputRefs.get(target.field) ?? transitionInputRefs.get('read') ?? null;
+        : (transitionInputRefs.get(target.field) ?? transitionInputRefs.get('read') ?? null);
     input?.focus();
     input?.select();
   },
@@ -117,6 +125,14 @@ const hasPendingTransitionEdits = computed(() => {
   const t = selectedTransition.value;
   const d = transitionDraft.value;
   if (!t || !d) return false;
+  if ('write' in t && t.tapeActions) {
+    return t.tapeActions.some(
+      (action, index) =>
+        d[`tape${index}.read`] !== action.read ||
+        d[`tape${index}.write`] !== action.write ||
+        d[`tape${index}.move`] !== action.move,
+    );
+  }
   for (const [key, value] of Object.entries(d)) {
     const cur = (t as unknown as Record<string, string>)[key];
     if (cur !== value) return true;
@@ -168,6 +184,22 @@ function applyTransitionEdits() {
 
   const oldProps: Partial<Omit<AnyTransition, 'id'>> = {};
   const newProps: Partial<Omit<AnyTransition, 'id'>> = {};
+  if ('write' in t && t.tapeActions) {
+    const tapeActions = t.tapeActions.map((action, index) => ({
+      read: draft[`tape${index}.read`] ?? action.read,
+      write: draft[`tape${index}.write`] ?? action.write,
+      move: (draft[`tape${index}.move`] ?? action.move) as 'L' | 'R' | 'S',
+    }));
+    Object.assign(oldProps, {
+      read: t.read,
+      write: t.write,
+      move: t.move,
+      tapeActions: t.tapeActions,
+    });
+    Object.assign(newProps, { ...tapeActions[0], tapeActions });
+    historyStore.dispatch(new UpdateTransitionCommand(t.id, oldProps, newProps));
+    return;
+  }
   const tRec = t as unknown as Record<string, string>;
   for (const [key, value] of Object.entries(draft)) {
     if (tRec[key] !== value) {
@@ -184,9 +216,19 @@ function applyChanges() {
   else if (hasPendingTransitionEdits.value) applyTransitionEdits();
 }
 
+docStore.registerInspectorCommitter(applyChanges);
+onBeforeUnmount(() => docStore.registerInspectorCommitter(null));
+
 const transitionFields = computed(() => {
   const t = selectedTransition.value;
   if (!t) return [];
+  if ('write' in t && t.tapeActions) {
+    return t.tapeActions.flatMap((_action, index) => [
+      { key: `tape${index}.read`, label: `Tape ${index + 1} read` },
+      { key: `tape${index}.write`, label: `Tape ${index + 1} write` },
+      { key: `tape${index}.move`, label: `Tape ${index + 1} move` },
+    ]);
+  }
   const fields: { key: string; label: string }[] = [{ key: 'read', label: 'Read' }];
   if ('pop' in t && 'push' in t) {
     fields.push({ key: 'pop', label: 'Pop' });
@@ -201,7 +243,7 @@ const transitionFields = computed(() => {
 </script>
 
 <template>
-  <aside class="inspector">
+  <aside class="inspector" aria-label="Properties inspector">
     <div v-if="selectedState && stateDraft" class="inspector__section">
       <h3 class="inspector__title">State</h3>
       <label class="inspector__field">
@@ -361,7 +403,10 @@ const transitionFields = computed(() => {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
 }
 
 .inspector__apply:hover:not(:disabled) {

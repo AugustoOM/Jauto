@@ -28,12 +28,14 @@ export function useInteractionManager(
   const dragStateId = ref<string | null>(null);
   const dragStartX = ref(0);
   const dragStartY = ref(0);
+  const dragOffsetX = ref(0);
+  const dragOffsetY = ref(0);
 
   const isDrawingTransition = ref(false);
   const transitionSourceId = ref<string | null>(null);
   const transitionPreviewEnd = ref<{ x: number; y: number } | null>(null);
 
-  function toWorld(e: MouseEvent, canvasRect: DOMRect) {
+  function toWorld(e: PointerEvent, canvasRect: DOMRect) {
     return screenToWorld(e.clientX - canvasRect.left, e.clientY - canvasRect.top);
   }
 
@@ -52,7 +54,7 @@ export function useInteractionManager(
   function addStateAt(x: number, y: number) {
     const name = nextStateName();
     const newState: AutomatonState = {
-      id: generateStateId(),
+      id: generateStateId(docStore.automaton.states),
       name,
       x,
       y,
@@ -83,7 +85,7 @@ export function useInteractionManager(
     }
   }
 
-  function onMouseDown(e: MouseEvent, canvasRect: DOMRect) {
+  function onPointerDown(e: PointerEvent, canvasRect: DOMRect) {
     const { x, y } = toWorld(e, canvasRect);
 
     if (e.button === 2) {
@@ -136,6 +138,8 @@ export function useInteractionManager(
       dragStateId.value = hitState.id;
       dragStartX.value = hitState.x;
       dragStartY.value = hitState.y;
+      dragOffsetX.value = x - hitState.x;
+      dragOffsetY.value = y - hitState.y;
       return;
     }
 
@@ -148,12 +152,15 @@ export function useInteractionManager(
     docStore.clearSelection();
   }
 
-  function onMouseMove(e: MouseEvent, canvasRect: DOMRect) {
+  function onPointerMove(e: PointerEvent, canvasRect: DOMRect) {
     const { x, y } = toWorld(e, canvasRect);
 
     if (isDragging.value && dragStateId.value) {
-      docStore.setAutomaton(
-        updateState(docStore.automaton, dragStateId.value, { x, y }) as AnyAutomaton,
+      docStore.previewAutomaton(
+        updateState(docStore.automaton, dragStateId.value, {
+          x: x - dragOffsetX.value,
+          y: y - dragOffsetY.value,
+        }) as AnyAutomaton,
       );
     }
 
@@ -162,7 +169,7 @@ export function useInteractionManager(
     }
   }
 
-  function onMouseUp(e: MouseEvent, canvasRect: DOMRect) {
+  function onPointerUp(e: PointerEvent, canvasRect: DOMRect) {
     if (isDragging.value && dragStateId.value) {
       const stateId = dragStateId.value;
       const current = docStore.automaton.states.find((s) => s.id === stateId);
@@ -171,7 +178,7 @@ export function useInteractionManager(
         const finalX = current.x;
         const finalY = current.y;
 
-        docStore.setAutomaton(
+        docStore.previewAutomaton(
           updateState(docStore.automaton, stateId, {
             x: dragStartX.value,
             y: dragStartY.value,
@@ -191,12 +198,35 @@ export function useInteractionManager(
 
       if (targetState) {
         const kind = docStore.automaton.kind;
-        const id = generateTransitionId();
+        const id = generateTransitionId(docStore.automaton.transitions);
         let transition;
         if (kind === 'pda') {
-          transition = { id, from: transitionSourceId.value, to: targetState.id, read: '', pop: '', push: '' };
+          transition = {
+            id,
+            from: transitionSourceId.value,
+            to: targetState.id,
+            read: '',
+            pop: '',
+            push: '',
+          };
         } else if (kind === 'turing') {
-          transition = { id, from: transitionSourceId.value, to: targetState.id, read: '', write: '', move: 'R' as const };
+          transition = {
+            id,
+            from: transitionSourceId.value,
+            to: targetState.id,
+            read: '',
+            write: '',
+            move: 'R' as const,
+            ...(docStore.automaton.tapes > 1
+              ? {
+                  tapeActions: Array.from({ length: docStore.automaton.tapes }, () => ({
+                    read: '',
+                    write: '',
+                    move: 'R' as const,
+                  })),
+                }
+              : {}),
+          };
         } else {
           transition = { id, from: transitionSourceId.value, to: targetState.id, read: '' };
         }
@@ -211,7 +241,27 @@ export function useInteractionManager(
     }
   }
 
+  function cancelGesture() {
+    if (isDragging.value && dragStateId.value) {
+      docStore.previewAutomaton(
+        updateState(docStore.automaton, dragStateId.value, {
+          x: dragStartX.value,
+          y: dragStartY.value,
+        }) as AnyAutomaton,
+      );
+    }
+    isDragging.value = false;
+    dragStateId.value = null;
+    isDrawingTransition.value = false;
+    transitionSourceId.value = null;
+    transitionPreviewEnd.value = null;
+  }
+
   function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      cancelGesture();
+      return;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       const sel = docStore.selectedElement;
       if (!sel) return;
@@ -236,9 +286,10 @@ export function useInteractionManager(
   }
 
   return {
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    cancelGesture,
     onKeyDown,
     isDrawingTransition,
     transitionSourceId,

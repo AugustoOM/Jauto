@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, Square, Zap } from 'lucide-vue-next';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Square, Zap } from '@lucide/vue';
 import { useDocumentStore } from '../stores/document';
 import { useSimulationStore } from '../stores/simulation';
 
@@ -7,6 +7,7 @@ const docStore = useDocumentStore();
 const sim = useSimulationStore();
 
 function handleStart() {
+  docStore.flushInspectorEdits();
   sim.start(docStore.automaton);
 }
 
@@ -20,6 +21,20 @@ function handleReset() {
 
 function handleNextStep() {
   sim.nextStep(docStore.automaton);
+}
+
+function stateText(config: Record<string, unknown>): string {
+  if (typeof config.currentState === 'string') return config.currentState;
+  if (config.activeStates instanceof Set) return [...config.activeStates].join(', ');
+  return '—';
+}
+
+function consumedText(config: Record<string, unknown>): string {
+  return sim.input.slice(0, Number(config.inputIndex) || 0) || 'ε';
+}
+
+function remainingText(config: Record<string, unknown>): string {
+  return typeof config.remainingInput === 'string' ? config.remainingInput || 'ε' : '—';
 }
 </script>
 
@@ -67,37 +82,107 @@ function handleNextStep() {
         >
           <Play :size="13" /> Play
         </button>
-        <button
-          v-if="sim.isRunning"
-          class="sim-controls__btn"
-          @click="sim.pause()"
-        >
+        <button v-if="sim.isRunning" class="sim-controls__btn" @click="sim.pause()">
           <Pause :size="13" /> Pause
         </button>
         <button class="sim-controls__btn" @click="handleReset">
           <RotateCcw :size="13" /> Reset
         </button>
-        <button class="sim-controls__btn" @click="sim.stop()">
-          <Square :size="13" /> Stop
-        </button>
+        <button class="sim-controls__btn" @click="sim.stop()"><Square :size="13" /> Stop</button>
       </template>
     </div>
     <div v-if="sim.isActive" class="sim-controls__status">
       <span class="sim-controls__step">Step {{ sim.stepIndex }}</span>
-      <span v-if="sim.activeTransition" class="sim-controls__detail">
-        {{ sim.activeTransition.label }}
+      <span v-if="sim.transitionHighlights.length" class="sim-controls__detail">
+        {{
+          sim.transitionHighlights
+            .map((transition) => `${transition.transitionId}: ${transition.label}`)
+            .join(' | ')
+        }}
       </span>
       <span
         class="sim-controls__result"
         :class="{
           'sim-controls__result--accepted': sim.status === 'accepted',
-          'sim-controls__result--rejected': sim.status === 'rejected' || sim.status === 'halted',
+          'sim-controls__result--rejected': sim.status !== 'running' && sim.status !== 'accepted',
         }"
       >
-        {{ sim.status === 'running' ? 'Running...' :
-           sim.status === 'accepted' ? 'Accepted' :
-           sim.status === 'halted' ? 'Halted' : 'Rejected' }}
+        {{
+          sim.status === 'running'
+            ? 'Running...'
+            : sim.status === 'accepted'
+              ? 'Accepted'
+              : sim.status === 'halted'
+                ? 'Halted'
+                : sim.status === 'invalid'
+                  ? 'Invalid machine'
+                  : sim.status === 'incomplete'
+                    ? 'Incomplete'
+                    : sim.status === 'canceled'
+                      ? 'Canceled'
+                      : 'Rejected'
+        }}
       </span>
+      <span v-if="sim.errorMessage" class="sim-controls__detail">{{ sim.errorMessage }}</span>
+    </div>
+    <div
+      v-if="sim.isActive && sim.activeConfigurations.length"
+      class="sim-controls__trace"
+      aria-live="polite"
+    >
+      <div class="sim-controls__trace-title">
+        Active configurations ({{ sim.activeConfigurations.length }})
+        <span v-if="sim.activeTraceIndex < sim.executionIndex">
+          · replay {{ sim.activeTraceIndex }}/{{ sim.executionIndex }}
+        </span>
+      </div>
+      <div class="sim-controls__branches">
+        <div
+          v-for="branch in sim.activeConfigurations"
+          :key="branch.id"
+          class="sim-controls__branch"
+        >
+          <strong>{{ branch.id }}</strong>
+          <span>state {{ stateText(branch.config) }}</span>
+          <span v-if="'inputIndex' in branch.config"
+            >consumed {{ consumedText(branch.config) }} · remaining
+            {{ remainingText(branch.config) }}</span
+          >
+          <span v-if="Array.isArray(branch.config.stack)"
+            >stack [{{ branch.config.stack.join(', ') }}]</span
+          >
+          <span v-if="Array.isArray(branch.config.tape)" class="sim-controls__tape">
+            tape
+            <template v-for="(symbol, index) in branch.config.tape" :key="index">
+              <b :class="{ 'sim-controls__head': index === branch.config.headPosition }">{{
+                symbol
+              }}</b>
+            </template>
+          </span>
+          <span
+            v-for="(tape, tapeIndex) in (branch.config.tapes ?? []).slice(1)"
+            :key="tapeIndex"
+            class="sim-controls__tape"
+          >
+            tape {{ Number(tapeIndex) + 2 }}
+            <template v-for="(symbol, index) in tape" :key="index">
+              <b
+                :class="{
+                  'sim-controls__head':
+                    index === branch.config.headPositions[Number(tapeIndex) + 1],
+                }"
+                >{{ symbol }}</b
+              >
+            </template>
+          </span>
+          <span
+            >via {{ branch.path.length ? branch.path.join(', ') : 'initial configuration' }}</span
+          >
+        </div>
+      </div>
+      <div v-if="sim.acceptingPath.length" class="sim-controls__witness">
+        Accepting witness: {{ sim.acceptingPath.join(' → ') }}
+      </div>
     </div>
     <div v-if="sim.isActive" class="sim-controls__speed">
       <label class="sim-controls__label">Speed</label>
@@ -111,6 +196,30 @@ function handleNextStep() {
       />
       <span class="sim-controls__speed-val">{{ sim.speed }}ms</span>
     </div>
+    <details v-if="!sim.isActive" class="sim-controls__batch">
+      <summary>Batch input testing</summary>
+      <label class="sim-controls__label" for="batch-inputs"
+        >One input per line (a blank line tests ε)</label
+      >
+      <textarea id="batch-inputs" v-model="sim.batchInput" rows="4" class="sim-controls__input" />
+      <button class="sim-controls__btn" @click="sim.runBatch(docStore.automaton)">Run batch</button>
+      <table v-if="sim.batchResults.length" class="sim-controls__results">
+        <thead>
+          <tr>
+            <th>Input</th>
+            <th>Outcome</th>
+            <th>Steps</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(result, index) in sim.batchResults" :key="`${index}:${result.input}`">
+            <td>{{ result.input || 'ε' }}</td>
+            <td>{{ result.outcome }}</td>
+            <td>{{ result.steps }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
   </div>
 </template>
 
@@ -244,5 +353,90 @@ function handleNextStep() {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   width: 50px;
+}
+
+.sim-controls__trace {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sim-controls__trace-title,
+.sim-controls__witness {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sim-controls__branches {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sim-controls__branch {
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font: 11px/1.35 var(--font-mono);
+}
+
+.sim-controls__tape {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sim-controls__tape b {
+  min-width: 17px;
+  padding: 1px 3px;
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.sim-controls__tape .sim-controls__head {
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-primary);
+}
+
+.sim-controls__witness {
+  color: var(--color-success);
+  font-family: var(--font-mono);
+}
+
+.sim-controls__batch {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.sim-controls__batch summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sim-controls__batch textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.sim-controls__results {
+  width: 100%;
+  border-collapse: collapse;
+  font: 11px var(--font-mono);
+}
+
+.sim-controls__results th,
+.sim-controls__results td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
 }
 </style>

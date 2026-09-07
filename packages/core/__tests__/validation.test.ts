@@ -11,7 +11,7 @@ import {
   hasUnreachableStates,
   validate,
 } from '../src/validation';
-import type { AutomatonState, FATransition, FiniteAutomaton } from '../src/index';
+import type { AutomatonState, FATransition, FiniteAutomaton, PushdownAutomaton, TuringMachine } from '../src/index';
 
 function s(id: string, opts: Partial<AutomatonState> = {}): AutomatonState {
   return { id, name: `q${id}`, x: 0, y: 0, isInitial: false, isFinal: false, ...opts };
@@ -67,6 +67,37 @@ describe('validation', () => {
       );
       expect(isDeterministic(fa)).toBe(false);
     });
+
+    it('returns false for prefix-overlapping string transitions', () => {
+      const fa = buildFA(
+        [s('0'), s('1'), s('2')],
+        [t('t0', '0', '1', 'a'), t('t1', '0', '2', 'ab')],
+      );
+      expect(isDeterministic(fa)).toBe(false);
+    });
+
+    it('detects overlapping PDA epsilon and stack patterns', () => {
+      const pda: PushdownAutomaton = {
+        kind: 'pda',
+        states: [s('0')],
+        transitions: [
+          { id: 't0', from: '0', to: '0', read: '', pop: '', push: 'A' },
+          { id: 't1', from: '0', to: '0', read: 'a', pop: 'Z', push: '' },
+        ],
+      };
+      expect(isDeterministic(pda)).toBe(false);
+    });
+
+    it('treats empty and explicit blank TM reads as the same symbol', () => {
+      const tm: TuringMachine = {
+        kind: 'turing', tapes: 1, states: [s('0')],
+        transitions: [
+          { id: 'empty', from: '0', to: '0', read: '', write: '', move: 'R' },
+          { id: 'blank', from: '0', to: '0', read: '\u25A1', write: '', move: 'L' },
+        ],
+      };
+      expect(isDeterministic(tm)).toBe(false);
+    });
   });
 
   describe('isComplete', () => {
@@ -84,6 +115,32 @@ describe('validation', () => {
         [t('t0', '0', '1', 'a'), t('t1', '1', '0', 'b')],
       );
       expect(isComplete(fa)).toBe(false);
+    });
+
+    it('checks generalized FA completeness per input symbol', () => {
+      const fa = buildFA([s('0')], [t('t0', '0', '0', 'ab')]);
+      expect(isComplete(fa)).toBe(false);
+    });
+
+    it('checks PDA input/stack coverage instead of assuming completeness', () => {
+      const incomplete: PushdownAutomaton = {
+        kind: 'pda', states: [s('0')],
+        transitions: [{ id: 't', from: '0', to: '0', read: 'a', pop: 'Z', push: 'Z' }],
+      };
+      expect(isComplete(incomplete)).toBe(true);
+      expect(isComplete({ ...incomplete, states: [...incomplete.states, s('1')] })).toBe(false);
+    });
+
+    it('requires TM transitions for every tape symbol from every state', () => {
+      const tm: TuringMachine = {
+        kind: 'turing', tapes: 1, states: [s('0')],
+        transitions: [
+          { id: 'a', from: '0', to: '0', read: 'a', write: 'a', move: 'R' },
+          { id: 'blank', from: '0', to: '0', read: '', write: '', move: 'R' },
+        ],
+      };
+      expect(isComplete(tm)).toBe(true);
+      expect(isComplete({ ...tm, transitions: tm.transitions.slice(0, 1) })).toBe(false);
     });
   });
 

@@ -68,4 +68,40 @@ describe('TM Runner', () => {
     expect(runner.currentConfig.headPosition).toBe(0);
     expect(runner.currentConfig.stepCount).toBe(0);
   });
+
+  it('supports explicit final-state and halting acceptance profiles', () => {
+    const halting = buildTM([s('0', { isInitial: true })], []);
+    expect(createTMRunner(halting, '').run().outcome).toBe('halted');
+    expect(createTMRunner(halting, '', { acceptByHalting: true }).run().outcome).toBe('accepted');
+
+    const initialFinal = buildTM([s('0', { isInitial: true, isFinal: true })], []);
+    expect(createTMRunner(initialFinal, '').run().outcome).toBe('accepted');
+    expect(createTMRunner(initialFinal, '', { acceptByFinalState: false }).run().outcome).toBe('halted');
+  });
+
+  it('rejects unsupported nondeterminism and JFLAP shortcut syntax before execution', () => {
+    const nondeterministic = buildTM(
+      [s('0', { isInitial: true }), s('1'), s('2')],
+      [t('t0', '0', '1', 'a', 'a', 'R'), t('t1', '0', '2', 'a', 'a', 'L')],
+    );
+    expect(() => createTMRunner(nondeterministic, 'a')).toThrow('Nondeterministic');
+    const shortcut = buildTM(
+      [s('0', { isInitial: true }), s('1')],
+      [t('t0', '0', '1', '~', '~', 'R')],
+    );
+    expect(() => createTMRunner(shortcut, 'a')).toThrow('shortcut syntax');
+    const multipleSymbols = buildTM(
+      [s('0', { isInitial: true }), s('1')],
+      [t('t0', '0', '1', 'ab', 'x', 'R')],
+    );
+    expect(() => createTMRunner(multipleSymbols, 'ab')).toThrow('one tape symbol');
+  });
+
+  it('includes the initial tape snapshot and exact transition path', () => {
+    const runner = createTMRunner(tm, '01');
+    expect(runner.currentStep.configurations[0]?.config.tape).toEqual(['0', '1']);
+    expect(runner.currentStep.transitionIds).toEqual([]);
+    expect(runner.step().transitionIds).toEqual(['t0']);
+    expect(runner.step().configurations[0]?.path).toEqual(['t1']);
+  });
 });

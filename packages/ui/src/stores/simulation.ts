@@ -1,8 +1,15 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { SimulationRunner, StepResult, SimulationStatus } from '@jauto/simulator';
-import { createDFARunner, createPDARunner, createTMRunner } from '@jauto/simulator';
-import type { AnyAutomaton, AnyTransition, FiniteAutomaton, PushdownAutomaton, TuringMachine } from '@jauto/core';
+import {
+  createDFARunner,
+  createNFARunner,
+  createPDARunner,
+  createTMRunner,
+} from '@jauto/simulator';
+import { isDeterministic } from '@jauto/core';
+import type { AnyAutomaton, AnyTransition, PushdownAutomaton, TuringMachine } from '@jauto/core';
+import { useDocumentStore } from './document';
 
 export interface TransitionHighlight {
   transitionId: string;
@@ -11,19 +18,33 @@ export interface TransitionHighlight {
   label: string;
 }
 
+export interface BatchResult {
+  input: string;
+  outcome: SimulationStatus;
+  steps: number;
+  message?: string;
+}
+
+const MAX_RETAINED_STEPS = 10000;
+
 export const useSimulationStore = defineStore('simulation', () => {
+  const document = useDocumentStore();
   const input = ref('');
   const isRunning = ref(false);
   const status = ref<SimulationStatus | null>(null);
+  const errorMessage = ref<string | null>(null);
   const stepIndex = ref(0);
   const highlightedStates = ref<Set<string>>(new Set());
-  const transitionHighlights = ref<TransitionHighlight[]>([]);
   const activeTraceIndex = ref(-1);
   const speed = ref(500);
+  const batchInput = ref('');
+  const batchResults = ref<BatchResult[]>([]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let runner: SimulationRunner<any> | null = null;
   let activeAutomaton: AnyAutomaton | null = null;
+  let activeSemanticSignature: string | null = null;
+  let executionStatus: SimulationStatus | null = null;
   let intervalId: ReturnType<typeof setInterval> | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const traceSteps = ref<StepResult<any>[]>([]);
@@ -31,7 +52,9 @@ export const useSimulationStore = defineStore('simulation', () => {
   function createRunnerFor(automaton: AnyAutomaton, inputStr: string) {
     switch (automaton.kind) {
       case 'fa':
-        return createDFARunner(automaton as FiniteAutomaton, inputStr);
+        return isDeterministic(automaton)
+          ? createDFARunner(automaton, inputStr)
+          : createNFARunner(automaton, inputStr);
       case 'pda':
         return createPDARunner(automaton as PushdownAutomaton, inputStr);
       case 'turing':
@@ -39,32 +62,42 @@ export const useSimulationStore = defineStore('simulation', () => {
     }
   }
 
-  const activeTransition = computed(() => {
-    if (activeTraceIndex.value < 0) return null;
-    return transitionHighlights.value[activeTraceIndex.value] ?? null;
+  const activeSnapshot = computed(() => traceSteps.value[activeTraceIndex.value] ?? null);
+  const executionIndex = computed(() => traceSteps.value.length - 1);
+  const transitionHighlights = computed<TransitionHighlight[]>(() => {
+    if (!activeAutomaton || !activeSnapshot.value) return [];
+    const ids = new Set(activeSnapshot.value.transitionIds);
+    return activeAutomaton.transitions
+      .filter((transition) => ids.has(transition.id))
+      .map(toHighlight);
   });
+  const activeTransition = computed(() => transitionHighlights.value[0] ?? null);
+  const activeConfigurations = computed(() => activeSnapshot.value?.configurations ?? []);
+  const acceptingPath = computed(() => activeSnapshot.value?.acceptingPath ?? []);
 
-  function updateHighlights() {
-    if (!runner) {
-      highlightedStates.value = new Set();
-      return;
-    }
+  function toHighlight(transition: AnyTransition): TransitionHighlight {
+    return {
+      transitionId: transition.id,
+      sourceStateId: transition.from,
+      targetStateId: transition.to,
+      label: getTransitionLabel(transition),
+    };
+  }
 
-    if (activeTransition.value) {
-      highlightedStates.value = new Set([
-        activeTransition.value.sourceStateId,
-        activeTransition.value.targetStateId,
-      ]);
-      return;
-    }
-
-    const config = runner.currentConfig;
+  function displaySnapshot(index: number) {
+    const snapshot = traceSteps.value[index];
+    if (!snapshot) return;
+    activeTraceIndex.value = index;
+    stepIndex.value = snapshot.stepIndex;
+    status.value = snapshot.status;
     const states = new Set<string>();
-    if ('currentState' in config && config.currentState) {
-      states.add(config.currentState as string);
-    }
-    if ('activeStates' in config && config.activeStates instanceof Set) {
-      for (const s of config.activeStates) states.add(s as string);
+    for (const branch of snapshot.configurations) {
+      const config = branch.config as Record<string, unknown>;
+      if (typeof config.currentState === 'string' && config.currentState)
+        states.add(config.currentState);
+      if (config.activeStates instanceof Set) {
+        for (const state of config.activeStates) if (typeof state === 'string') states.add(state);
+      }
     }
     highlightedStates.value = states;
   }
@@ -74,60 +107,60 @@ export const useSimulationStore = defineStore('simulation', () => {
     try {
       runner = createRunnerFor(automaton, input.value);
       activeAutomaton = automaton;
-    } catch {
-      status.value = 'rejected';
+      activeSemanticSignature = semanticSignature(automaton);
+    } catch (error) {
+      status.value = 'invalid';
+      errorMessage.value = error instanceof Error ? error.message : String(error);
       return;
     }
-    status.value = 'running';
-    stepIndex.value = 0;
-    traceSteps.value = [];
-    transitionHighlights.value = [];
-    activeTraceIndex.value = -1;
-    updateHighlights();
+    const initial = runner.currentStep;
+    traceSteps.value = [initial];
+    executionStatus = initial.status;
+    errorMessage.value = null;
+    displaySnapshot(0);
   }
 
-  function step(automaton: AnyAutomaton) {
-    if (!runner || status.value !== 'running') return;
-    const previousConfig = runner.currentConfig;
+  function executeStep() {
+    if (!runner || executionStatus !== 'running') return;
+    if (traceSteps.value.length > MAX_RETAINED_STEPS) {
+      runner.cancel();
+      runner = null;
+      executionStatus = 'incomplete';
+      status.value = 'incomplete';
+      errorMessage.value = `Replay history reached the ${MAX_RETAINED_STEPS.toLocaleString()}-step limit.`;
+      return;
+    }
     const result = runner.step();
-    const highlight = inferTransitionHighlight(automaton, previousConfig, result.config);
     traceSteps.value = [...traceSteps.value, result];
-    transitionHighlights.value = highlight
-      ? [...transitionHighlights.value, highlight]
-      : transitionHighlights.value;
-    activeTraceIndex.value = transitionHighlights.value.length - 1;
-    stepIndex.value = result.stepIndex;
-    status.value = result.status;
-    updateHighlights();
+    executionStatus = result.status;
+    displaySnapshot(traceSteps.value.length - 1);
   }
 
   function nextStep(automaton: AnyAutomaton) {
-    if (activeTraceIndex.value < transitionHighlights.value.length - 1) {
-      activeTraceIndex.value++;
-      stepIndex.value = activeTraceIndex.value + 1;
-      updateHighlights();
+    activeAutomaton = automaton;
+    if (activeTraceIndex.value < executionIndex.value) {
+      displaySnapshot(activeTraceIndex.value + 1);
       return;
     }
-    step(automaton);
+    executeStep();
   }
 
   function previousStep() {
-    if (activeTraceIndex.value <= 0) return;
-    activeTraceIndex.value--;
-    stepIndex.value = activeTraceIndex.value + 1;
-    updateHighlights();
+    if (activeTraceIndex.value > 0) displaySnapshot(activeTraceIndex.value - 1);
   }
 
   function play(automaton: AnyAutomaton) {
     if (!runner) start(automaton);
-    if (status.value !== 'running') return;
+    if (
+      !runner ||
+      (activeTraceIndex.value >= executionIndex.value && executionStatus !== 'running')
+    )
+      return;
     activeAutomaton = automaton;
     isRunning.value = true;
     intervalId = setInterval(() => {
-      if (activeAutomaton) step(activeAutomaton);
-      if (status.value !== 'running') {
-        pause();
-      }
+      if (activeAutomaton) nextStep(activeAutomaton);
+      if (activeTraceIndex.value >= executionIndex.value && executionStatus !== 'running') pause();
     }, speed.value);
   }
 
@@ -141,14 +174,29 @@ export const useSimulationStore = defineStore('simulation', () => {
 
   function stop() {
     pause();
+    runner?.cancel();
     runner = null;
     activeAutomaton = null;
+    activeSemanticSignature = null;
+    executionStatus = null;
     status.value = null;
+    errorMessage.value = null;
     stepIndex.value = 0;
     traceSteps.value = [];
-    transitionHighlights.value = [];
     activeTraceIndex.value = -1;
     highlightedStates.value = new Set();
+  }
+
+  function invalidate(
+    message = 'The machine changed. Restart the simulation to use the new definition.',
+  ) {
+    if (!runner) return;
+    pause();
+    runner.cancel();
+    runner = null;
+    executionStatus = 'invalid';
+    status.value = 'invalid';
+    errorMessage.value = message;
   }
 
   function reset(automaton: AnyAutomaton) {
@@ -156,107 +204,82 @@ export const useSimulationStore = defineStore('simulation', () => {
     start(automaton);
   }
 
+  function runBatch(automaton: AnyAutomaton, maxSteps = 10000) {
+    batchResults.value = batchInput.value
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .map((value) => {
+        try {
+          const batchRunner = createRunnerFor(automaton, value);
+          let result = batchRunner.currentStep;
+          let steps = 0;
+          while (result.status === 'running' && steps < maxSteps) {
+            result = batchRunner.step();
+            steps++;
+          }
+          return {
+            input: value,
+            outcome: result.status === 'running' ? ('incomplete' as const) : result.status,
+            steps,
+          };
+        } catch (error) {
+          return {
+            input: value,
+            outcome: 'invalid' as const,
+            steps: 0,
+            message: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+  }
+
   watch(speed, () => {
-    if (isRunning.value && intervalId !== null) {
-      clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        if (activeAutomaton) step(activeAutomaton);
-        if (status.value !== 'running') pause();
-      }, speed.value);
-    }
+    if (!isRunning.value || intervalId === null) return;
+    clearInterval(intervalId);
+    intervalId = setInterval(() => {
+      if (activeAutomaton) nextStep(activeAutomaton);
+      if (activeTraceIndex.value >= executionIndex.value && executionStatus !== 'running') pause();
+    }, speed.value);
   });
+
+  watch(
+    () => document.automaton,
+    (automaton) => {
+      if (!runner || activeSemanticSignature === null) return;
+      const nextSignature = semanticSignature(automaton);
+      if (nextSignature !== activeSemanticSignature) invalidate();
+      else activeAutomaton = automaton;
+    },
+  );
 
   const isActive = computed(() => status.value !== null);
   const canGoPrevious = computed(() => activeTraceIndex.value > 0);
   const canGoNext = computed(
-    () => activeTraceIndex.value < transitionHighlights.value.length - 1 || status.value === 'running',
+    () => activeTraceIndex.value < executionIndex.value || executionStatus === 'running',
   );
 
-  function inferTransitionHighlight(
-    automaton: AnyAutomaton,
-    previousConfig: unknown,
-    nextConfig: unknown,
-  ): TransitionHighlight | null {
-    const transition = findTransitionForStep(automaton, previousConfig, nextConfig);
-    if (!transition) return null;
-    return {
-      transitionId: transition.id,
-      sourceStateId: transition.from,
-      targetStateId: transition.to,
-      label: getTransitionLabel(transition),
-    };
+  function semanticSignature(automaton: AnyAutomaton): string {
+    return JSON.stringify({
+      kind: automaton.kind,
+      tapes: automaton.kind === 'turing' ? automaton.tapes : undefined,
+      states: automaton.states.map(({ x: _x, y: _y, ...state }) => state),
+      transitions: automaton.transitions.map(
+        ({ controlX: _controlX, controlY: _controlY, ...transition }) => transition,
+      ),
+    });
   }
 
-  function findTransitionForStep(
-    automaton: AnyAutomaton,
-    previousConfig: unknown,
-    nextConfig: unknown,
-  ): AnyTransition | null {
-    if (!hasCurrentState(previousConfig) || !hasCurrentState(nextConfig)) return null;
-    const candidates = automaton.transitions.filter(
-      (t) => t.from === previousConfig.currentState && t.to === nextConfig.currentState,
-    );
-    if (candidates.length === 0) return null;
-
-    if (automaton.kind === 'fa' || automaton.kind === 'pda') {
-      const consumed = getInputIndex(nextConfig) - getInputIndex(previousConfig);
-      const read = consumed > 0 ? getRemainingInput(previousConfig)[0] ?? '' : '';
-      return candidates.find((t) => 'read' in t && t.read === read) ?? candidates[0] ?? null;
-    }
-
-    if (automaton.kind === 'turing') {
-      const read = getTapeSymbol(previousConfig);
-      return (
-        candidates.find((t) => 'read' in t && (t.read || '\u25A1') === read) ??
-        candidates[0] ??
-        null
-      );
-    }
-
-    return candidates[0] ?? null;
-  }
-
-  function hasCurrentState(config: unknown): config is { currentState: string } {
-    return typeof config === 'object' && config !== null && 'currentState' in config;
-  }
-
-  function getInputIndex(config: unknown): number {
-    if (typeof config === 'object' && config !== null && 'inputIndex' in config) {
-      return Number(config.inputIndex) || 0;
-    }
-    return 0;
-  }
-
-  function getRemainingInput(config: unknown): string {
-    if (typeof config === 'object' && config !== null && 'remainingInput' in config) {
-      return String(config.remainingInput ?? '');
-    }
-    return '';
-  }
-
-  function getTapeSymbol(config: unknown): string {
-    if (
-      typeof config === 'object' &&
-      config !== null &&
-      'tape' in config &&
-      'headPosition' in config &&
-      Array.isArray(config.tape)
-    ) {
-      return String(config.tape[Number(config.headPosition)] ?? '\u25A1');
-    }
-    return '\u25A1';
-  }
-
-  function getTransitionLabel(t: AnyTransition): string {
-    const read = t.read || '\u03B5';
-    if ('pop' in t && 'push' in t) {
-      const pop = t.pop || '\u03B5';
-      const push = t.push || '\u03B5';
-      return `${read}, ${pop} -> ${push}`;
-    }
-    if ('write' in t && 'move' in t) {
-      const write = t.write || '\u25A1';
-      return `${read} -> ${write}, ${t.move}`;
+  function getTransitionLabel(transition: AnyTransition): string {
+    const read = transition.read || 'ε';
+    if ('pop' in transition && 'push' in transition)
+      return `${read}, ${transition.pop || 'ε'} -> ${transition.push || 'ε'}`;
+    if ('write' in transition && 'move' in transition) {
+      return (transition.tapeActions ?? [transition])
+        .map(
+          (action, index) =>
+            `${transition.tapeActions ? `T${index + 1}: ` : ''}${action.read || '□'} -> ${action.write || '□'}, ${action.move}`,
+        )
+        .join(' | ');
     }
     return read;
   }
@@ -266,22 +289,31 @@ export const useSimulationStore = defineStore('simulation', () => {
     isRunning,
     isActive,
     status,
+    errorMessage,
     stepIndex,
     highlightedStates,
     activeTransition,
+    activeConfigurations,
+    activeSnapshot,
+    acceptingPath,
     activeTraceIndex,
+    executionIndex,
     transitionHighlights,
     canGoPrevious,
     canGoNext,
     speed,
     traceSteps,
+    batchInput,
+    batchResults,
     start,
-    step,
+    step: (_automaton: AnyAutomaton) => executeStep(),
     nextStep,
     previousStep,
     play,
     pause,
     stop,
+    invalidate,
     reset,
+    runBatch,
   };
 });

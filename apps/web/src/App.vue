@@ -1,41 +1,47 @@
 <script setup lang="ts">
-import { HomePage, EditorView, useDocumentStore, useHistoryStore, useSimulationStore } from '@jauto/ui';
+import { onBeforeUnmount } from 'vue';
+import {
+  HomePage,
+  EditorView,
+  createBeforeUnloadHandler,
+  useApplicationCommands,
+  useDocumentStore,
+} from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { WebFileService, openAutomaton } from '@jauto/file-io';
+import { WebFileService } from '@jauto/file-io';
 import AppHeader from './AppHeader.vue';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 const docStore = useDocumentStore();
-const historyStore = useHistoryStore();
-const simStore = useSimulationStore();
 const fileService = new WebFileService();
+const commands = useApplicationCommands(fileService);
+docStore.restoreRecoveryDraft();
+const beforeUnload = createBeforeUnloadHandler(
+  () => docStore.currentView === 'editor' && docStore.isDirty,
+);
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
 
 useKeyboardShortcuts();
 
-function handleNew(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
+async function handleNew(kind: AutomatonKind) {
+  await commands.newDocument(kind);
 }
 
 async function handleOpen() {
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await commands.openDocument();
 }
 </script>
 
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage @new="handleNew" @open="handleOpen" />
+      <HomePage
+        :can-resume="docStore.canResume"
+        @new="handleNew"
+        @open="handleOpen"
+        @resume="docStore.resume"
+      />
     </template>
     <template v-else>
       <AppHeader />

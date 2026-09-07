@@ -12,6 +12,12 @@ struct FileOpenResult {
     path: String,
 }
 
+#[derive(Serialize)]
+struct FileSaveResult {
+    name: String,
+    path: String,
+}
+
 #[tauri::command]
 async fn open_file() -> Result<Option<FileOpenResult>, String> {
     let Some(file) = rfd::AsyncFileDialog::new()
@@ -33,7 +39,20 @@ async fn open_file() -> Result<Option<FileOpenResult>, String> {
 }
 
 #[tauri::command]
-async fn save_file(content: String, default_name: String) -> Result<Option<String>, String> {
+async fn save_file(
+    content: String,
+    default_name: String,
+    current_path: Option<String>,
+) -> Result<Option<FileSaveResult>, String> {
+    if let Some(current_path) = current_path {
+        let path = std::path::PathBuf::from(current_path);
+        fs::write(&path, content).map_err(|err| err.to_string())?;
+        return Ok(Some(FileSaveResult {
+            name: file_name(&path, &default_name),
+            path: path.to_string_lossy().into_owned(),
+        }));
+    }
+
     let Some(file) = rfd::AsyncFileDialog::new()
         .add_filter("JFLAP Files", &["jff"])
         .set_file_name(&default_name)
@@ -45,7 +64,10 @@ async fn save_file(content: String, default_name: String) -> Result<Option<Strin
 
     let path = file.path().to_path_buf();
     fs::write(&path, content).map_err(|err| err.to_string())?;
-    Ok(Some(file_name(&path, &default_name)))
+    Ok(Some(FileSaveResult {
+        name: file_name(&path, &default_name),
+        path: path.to_string_lossy().into_owned(),
+    }))
 }
 
 #[tauri::command]
@@ -73,8 +95,13 @@ fn file_name(path: &Path, fallback: &str) -> String {
 fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
     let home = MenuItem::with_id(app, "menu:home", "Back to Home", true, Some("Alt+Left"))?;
     let new_fa = MenuItem::with_id(app, "menu:new-fa", "New DFA/NFA", true, Some("CmdOrCtrl+N"))?;
-    let new_pda =
-        MenuItem::with_id(app, "menu:new-pda", "New PDA", true, Some("CmdOrCtrl+Shift+N"))?;
+    let new_pda = MenuItem::with_id(
+        app,
+        "menu:new-pda",
+        "New PDA",
+        true,
+        Some("CmdOrCtrl+Shift+N"),
+    )?;
     let new_tm = MenuItem::with_id(
         app,
         "menu:new-tm",
@@ -83,8 +110,16 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
         Some("CmdOrCtrl+Alt+N"),
     )?;
     let open = MenuItem::with_id(app, "menu:open", "Open...", true, Some("CmdOrCtrl+O"))?;
-    let save = MenuItem::with_id(app, "menu:save", "Save As...", true, Some("CmdOrCtrl+S"))?;
-    let export_png = MenuItem::with_id(app, "menu:export-png", "Export PNG...", true, None::<&str>)?;
+    let save = MenuItem::with_id(app, "menu:save", "Save", true, Some("CmdOrCtrl+S"))?;
+    let save_as = MenuItem::with_id(
+        app,
+        "menu:save-as",
+        "Save As...",
+        true,
+        Some("CmdOrCtrl+Shift+S"),
+    )?;
+    let export_png =
+        MenuItem::with_id(app, "menu:export-png", "Export PNG...", true, None::<&str>)?;
     let undo = MenuItem::with_id(app, "menu:undo", "Undo", true, Some("CmdOrCtrl+Z"))?;
     let redo = MenuItem::with_id(app, "menu:redo", "Redo", true, Some("CmdOrCtrl+Shift+Z"))?;
     let reload = MenuItem::with_id(app, "menu:reload", "Reload", true, Some("CmdOrCtrl+R"))?;
@@ -103,6 +138,7 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
         .separator()
         .item(&open)
         .item(&save)
+        .item(&save_as)
         .separator()
         .item(&export_png)
         .separator()

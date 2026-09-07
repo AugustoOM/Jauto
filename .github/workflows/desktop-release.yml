@@ -1,54 +1,99 @@
-name: Desktop native releases
+name: Signed desktop release
 
 on:
   push:
-    tags:
-      - 'v*'
-      - 'Beta'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'GitHub Release tag to create or update, for example v0.2.0'
+        description: 'Version tag matching repository metadata, for example v0.2.0'
         required: true
         default: 'v0.2.0'
 
 permissions:
   contents: write
 
+concurrency:
+  group: desktop-release-${{ github.ref }}-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
 jobs:
+  validate:
+    name: Validate release metadata and credentials
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 22 }
+      - name: Match tag to every project version
+        run: node scripts/check-release-version.mjs "$RELEASE_TAG"
+      - name: Require signing and notarization credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID)
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then echo "Missing required release secret: $name"; exit 1; fi
+          done
+
+  quality:
+    name: Release quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level moderate
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm --filter @jauto/web build
+      - run: pnpm --filter @jauto/desktop build:frontend
+
   build:
-    name: Build ${{ matrix.label }}
+    name: Build and sign ${{ matrix.label }}
+    needs: [validate, quality]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - label: windows-x64
-            os: windows-latest
-            args: ''
-          - label: macos-universal
-            os: macos-latest
-            args: '--target universal-apple-darwin'
-
+          - { label: windows-x64, os: windows-latest }
+          - { label: macos-universal, os: macos-latest }
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Enable pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add macOS universal targets
-        if: runner.os == 'macOS'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with: { workspaces: apps/desktop/src-tauri }
+      - if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Install dependencies
@@ -59,55 +104,94 @@ jobs:
 
       - name: Build native desktop app
         working-directory: apps/desktop
-        run: pnpm tauri build ${{ matrix.args }}
-
-      - name: Upload native installers
-        uses: actions/upload-artifact@v4
+        run: pnpm tauri build --config src-tauri/tauri.release.conf.json
+      - name: Build signed and notarized universal macOS installer
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        run: pnpm tauri build --target universal-apple-darwin
+      - name: Verify Windows signatures and installers
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem apps/desktop/src-tauri/target/release/bundle -Recurse -Include *.exe,*.msi
+          if (-not $files) { throw 'No Windows installers were produced.' }
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne 'Valid') { throw "Invalid signature on $($file.Name): $($signature.Status)" }
+          }
+      - name: Smoke-test installed Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem apps/desktop/src-tauri/target/release/bundle -Recurse -Filter *.msi | Select-Object -First 1
+          $installRoot = Join-Path $env:RUNNER_TEMP 'jauto-installed'
+          $process = Start-Process msiexec.exe -ArgumentList @('/a', $msi.FullName, '/qn', "TARGETDIR=$installRoot") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "MSI administrative install failed: $($process.ExitCode)" }
+          $executable = Get-ChildItem $installRoot -Recurse -Filter jauto.exe | Select-Object -First 1
+          if (-not $executable) { throw 'Installed jauto.exe was not found.' }
+          $app = Start-Process $executable.FullName -PassThru
+          Start-Sleep -Seconds 5
+          if ($app.HasExited -and $app.ExitCode -ne 0) { throw "Installed app exited with $($app.ExitCode)" }
+          if (-not $app.HasExited) { Stop-Process -Id $app.Id }
+      - name: Verify macOS signature and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle -name '*.app' -type d | head -1)
+          dmg=$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle -name '*.dmg' -type f | head -1)
+          test -n "$app" && test -n "$dmg"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          xcrun stapler validate "$dmg"
+      - name: Smoke-test installed macOS application
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle -name '*.dmg' -type f | head -1)
+          mount_point="$RUNNER_TEMP/jauto-dmg"
+          installed_app="$RUNNER_TEMP/Jauto.app"
+          mkdir -p "$mount_point"
+          hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse
+          cp -R "$mount_point/Jauto.app" "$installed_app"
+          hdiutil detach "$mount_point"
+          codesign --verify --deep --strict "$installed_app"
+          "$installed_app/Contents/MacOS/jauto" & app_pid=$!
+          sleep 5
+          kill -0 "$app_pid"
+          kill "$app_pid"
+      - uses: actions/upload-artifact@v7
         with:
           name: jauto-${{ matrix.label }}
           if-no-files-found: error
           path: |
             apps/desktop/src-tauri/target/release/bundle/**/*.msi
             apps/desktop/src-tauri/target/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
             apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/**/*.app.tar.gz
 
   publish:
-    name: Publish GitHub Release downloads
+    name: Publish GitHub Release
     runs-on: ubuntu-latest
     needs: build
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download native installers
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-
-      - name: Create or update GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with: { path: release-assets }
+      - name: Create checksums
+        run: find release-assets -type f -print0 | sort -z | xargs -0 sha256sum > release-assets/SHA256SUMS.txt
+      - name: Create or update release
+        shell: bash
         run: |
           set -euo pipefail
+          prerelease=()
+          [[ "$RELEASE_TAG" == *-* ]] && prerelease=(--prerelease)
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" --title "Jauto $RELEASE_TAG" --notes-file .github/release-notes/desktop.md
+            gh release edit "$RELEASE_TAG" --title "Jauto $RELEASE_TAG" --notes-file .github/release-notes/desktop.md "${prerelease[@]}"
           else
-            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Jauto $RELEASE_TAG" --notes-file .github/release-notes/desktop.md
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Jauto $RELEASE_TAG" --notes-file .github/release-notes/desktop.md "${prerelease[@]}"
           fi
-
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mapfile -t files < <(find release-assets -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.app.tar.gz" \))
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No native installers were found."
-            exit 1
-          fi
+          mapfile -d '' files < <(find release-assets -type f -print0)
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber

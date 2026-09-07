@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import { Pencil, Save } from 'lucide-vue-next';
-import { useDocumentStore, useHistoryStore, useSimulationStore, ThemeToggle } from '@jauto/ui';
+import { Pencil, Save } from '@lucide/vue';
+import { useApplicationCommands, useDocumentStore, ThemeToggle } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { WebFileService, openAutomaton, saveAutomaton } from '@jauto/file-io';
+import { WebFileService } from '@jauto/file-io';
 
 const docStore = useDocumentStore();
-const historyStore = useHistoryStore();
-const simStore = useSimulationStore();
 const fileService = new WebFileService();
+const commands = useApplicationCommands(fileService);
 const openMenu = ref<string | null>(null);
 const isRenaming = ref(false);
 const renameCancelled = ref(false);
@@ -24,43 +23,29 @@ function closeMenu() {
   openMenu.value = null;
 }
 
-function goHome() {
+async function goHome() {
   closeMenu();
-  simStore.stop();
-  docStore.goHome();
+  await commands.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
   closeMenu();
+  await commands.newDocument(kind);
 }
 
 async function openFile() {
   closeMenu();
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    alert(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await commands.openDocument();
 }
 
-async function persistToDisk() {
-  const name = docStore.fileName ?? 'untitled.jff';
-  await saveAutomaton(fileService, docStore.automaton, name);
-  docStore.markSaved(name);
+async function persistToDisk(_saveAs = false): Promise<boolean> {
+  return commands.saveDocument(_saveAs);
 }
 
 async function saveFile() {
   closeMenu();
   try {
-    await persistToDisk();
+    await persistToDisk(true);
   } catch (err) {
     alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -80,14 +65,7 @@ async function onSaveClick() {
 
 async function exportPNG() {
   closeMenu();
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  canvas.toBlob(async (blob) => {
-    if (blob) {
-      const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-      await fileService.exportImage(blob, name);
-    }
-  });
+  await commands.exportPng();
 }
 
 function startRename() {
@@ -131,9 +109,13 @@ function onRenameKey(e: KeyboardEvent) {
       <div class="app-header__menu-group">
         <button class="app-header__nav-btn" @click="toggleMenu('file')">File</button>
         <div v-if="openMenu === 'file'" class="app-header__dropdown">
-          <button class="app-header__dropdown-item" @click="newDocument('fa')">New DFA / NFA</button>
+          <button class="app-header__dropdown-item" @click="newDocument('fa')">
+            New DFA / NFA
+          </button>
           <button class="app-header__dropdown-item" @click="newDocument('pda')">New PDA</button>
-          <button class="app-header__dropdown-item" @click="newDocument('turing')">New Turing Machine</button>
+          <button class="app-header__dropdown-item" @click="newDocument('turing')">
+            New Turing Machine
+          </button>
           <div class="app-header__dropdown-sep" />
           <button class="app-header__dropdown-item" @click="openFile">Open .jff...</button>
           <button class="app-header__dropdown-item" @click="saveFile">Save as .jff</button>
@@ -345,7 +327,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__rename-btn:hover {

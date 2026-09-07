@@ -10,14 +10,19 @@ export interface AutomatonState {
   readonly label?: string;
 }
 
-export interface FATransition {
+export interface TransitionLayout {
+  readonly controlX?: number;
+  readonly controlY?: number;
+}
+
+export interface FATransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
   readonly read: string;
 }
 
-export interface PDATransition {
+export interface PDATransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
@@ -26,10 +31,17 @@ export interface PDATransition {
   readonly push: string;
 }
 
-export interface TMTransition {
+export interface TMTransition extends TransitionLayout {
   readonly id: string;
   readonly from: string;
   readonly to: string;
+  readonly read: string;
+  readonly write: string;
+  readonly move: 'L' | 'R' | 'S';
+  readonly tapeActions?: readonly TMTapeAction[];
+}
+
+export interface TMTapeAction {
   readonly read: string;
   readonly write: string;
   readonly move: 'L' | 'R' | 'S';
@@ -37,16 +49,22 @@ export interface TMTransition {
 
 export type AnyTransition = FATransition | PDATransition | TMTransition;
 
-export interface Automaton<T extends AnyTransition> {
-  readonly kind: AutomatonKind;
-  readonly states: readonly AutomatonState[];
-  readonly transitions: readonly T[];
-  readonly meta?: { readonly comment?: string };
+export interface AutomatonNote {
+  readonly text: string;
+  readonly x: number;
+  readonly y: number;
 }
 
-export type FiniteAutomaton = Automaton<FATransition>;
-export type PushdownAutomaton = Automaton<PDATransition>;
-export type TuringMachine = Automaton<TMTransition> & { readonly tapes: number };
+export interface Automaton<T extends AnyTransition, K extends AutomatonKind = AutomatonKind> {
+  readonly kind: K;
+  readonly states: readonly AutomatonState[];
+  readonly transitions: readonly T[];
+  readonly meta?: { readonly comment?: string; readonly notes?: readonly AutomatonNote[] };
+}
+
+export type FiniteAutomaton = Automaton<FATransition, 'fa'>;
+export type PushdownAutomaton = Automaton<PDATransition, 'pda'>;
+export type TuringMachine = Automaton<TMTransition, 'turing'> & { readonly tapes: number };
 
 export type AnyAutomaton = FiniteAutomaton | PushdownAutomaton | TuringMachine;
 
@@ -58,10 +76,10 @@ export function createEmptyAutomaton(kind: AutomatonKind): AnyAutomaton {
   const base = { states: [], transitions: [], meta: {} };
   switch (kind) {
     case 'fa':
-      return { ...base, kind: 'fa' } as FiniteAutomaton;
+      return { ...base, kind: 'fa' };
     case 'pda':
-      return { ...base, kind: 'pda' } as PushdownAutomaton;
+      return { ...base, kind: 'pda' };
     case 'turing':
-      return { ...base, kind: 'turing', tapes: 1 } as TuringMachine;
+      return { ...base, kind: 'turing', tapes: 1 };
   }
 }

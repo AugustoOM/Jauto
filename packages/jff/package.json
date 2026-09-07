@@ -1,6 +1,6 @@
 {
   "name": "@jauto/jff",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
@@ -21,12 +23,13 @@
   },
   "dependencies": {
     "@jauto/core": "workspace:*",
-    "fast-xml-parser": "^5"
+    "fast-xml-parser": "^5.8.0"
   },
   "devDependencies": {
-    "vite": "^6",
-    "typescript": "^5.8",
-    "vitest": "^3",
-    "vite-plugin-dts": "^4"
+    "@jauto/simulator": "workspace:*",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vite-plugin-dts": "^5.0.2",
+    "vitest": "^4.1.8"
   }
 }

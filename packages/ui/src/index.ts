@@ -4,7 +4,7 @@ export { default as AutomatonCanvas } from './components/AutomatonCanvas.vue';
 export { default as Toolbar } from './components/Toolbar.vue';
 export { default as InspectorPanel } from './components/InspectorPanel.vue';
 export { default as ThemeToggle } from './components/ThemeToggle.vue';
-export { ArrowLeft, Pencil, Save } from 'lucide-vue-next';
+export { ArrowLeft, Pencil, Save } from '@lucide/vue';
 
 export { useDocumentStore } from './stores/document';
 export { useHistoryStore } from './stores/history';
@@ -17,3 +17,10 @@ export type { Theme } from './stores/theme';
 export { saveDocumentKey, type SaveDocumentFn } from './injectionKeys';
 
 export { STATE_RADIUS, TRANSITION_HIT_TOLERANCE, SELF_LOOP_RADIUS, SELF_LOOP_OFFSET } from './constants';
+export { isEditableKeyTarget, shouldHandleGraphKey } from './keyboard';
+export { createBeforeUnloadHandler, requestDocumentLifecycleDecision, runProtectedDocumentAction } from './documentLifecycle';
+export type { DocumentLifecycleDecision, ConfirmFn } from './documentLifecycle';
+export { exportDiagramPng, getDiagramBounds } from './diagramExport';
+export type { DiagramExportOptions, DiagramBounds } from './diagramExport';
+export { useApplicationCommands } from './applicationCommands';
+export type { ApplicationMenuCommand } from './applicationCommands';

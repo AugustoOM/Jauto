@@ -1,9 +1,14 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["eslint.config.mjs", "tsconfig.base.json", "vitest.config.ts"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
+    },
+    "@jauto/ui#build": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "dev": {
       "dependsOn": ["^build"],

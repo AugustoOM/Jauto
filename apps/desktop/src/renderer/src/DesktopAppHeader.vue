@@ -5,18 +5,15 @@ import {
   Pencil,
   Save,
   ThemeToggle,
+  useApplicationCommands,
   useDocumentStore,
-  useHistoryStore,
-  useSimulationStore,
 } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
-const historyStore = useHistoryStore();
-const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+const commands = useApplicationCommands(fileService);
 const openMenu = ref<string | null>(null);
 const isRenaming = ref(false);
 const renameCancelled = ref(false);
@@ -32,42 +29,32 @@ function closeMenu() {
   openMenu.value = null;
 }
 
-function goBack() {
+async function goBack() {
   closeMenu();
-  simStore.stop();
-  docStore.goHome();
+  await commands.goHome();
 }
 
-function newDocument(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
+async function newDocument(kind: AutomatonKind) {
   closeMenu();
+  await commands.newDocument(kind);
 }
 
 async function openFile() {
   closeMenu();
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName);
-      historyStore.clear();
-      simStore.stop();
-    }
-  } catch (err) {
-    console.error('Failed to open:', err);
-  }
+  await commands.openDocument();
 }
 
-async function persistToDisk() {
-  const name = docStore.fileName ?? 'untitled.jff';
-  const saved = await saveAutomaton(fileService, docStore.automaton, name);
-  if (saved) docStore.markSaved(name);
+async function persistToDisk(saveAs = false): Promise<boolean> {
+  return commands.saveDocument(saveAs);
 }
 
 async function saveFile() {
   closeMenu();
-  await onSaveClick();
+  try {
+    await persistToDisk(true);
+  } catch (err) {
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 async function onSaveClick() {
@@ -76,7 +63,7 @@ async function onSaveClick() {
   try {
     await persistToDisk();
   } catch (err) {
-    console.error('Failed to save:', err);
+    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     savingFile.value = false;
   }
@@ -84,14 +71,7 @@ async function onSaveClick() {
 
 async function exportPNG() {
   closeMenu();
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  canvas.toBlob(async (blob) => {
-    if (blob) {
-      const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-      await fileService.exportImage(blob, name);
-    }
-  });
+  await commands.exportPng();
 }
 
 function startRename() {
@@ -225,7 +205,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__back {
@@ -328,7 +310,11 @@ function onRenameKey(e: KeyboardEvent) {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.1s, border-color 0.1s, color 0.1s, opacity 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s,
+    opacity 0.1s;
 }
 
 .app-header__save:hover:not(:disabled) {
@@ -375,7 +361,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__rename-btn:hover {

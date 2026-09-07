@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!--Created with JFLAP 6.1.--><structure>
+	<type>regular pumping lemma</type>
+	<name>a^n b^n : n &gt;= 0</name>
+	<first_player>Human</first_player>
+	<m>4</m>
+	<w>aaaabbbb</w>
+	<i>2</i>
+	<xLength>2</xLength>
+	<yLength>2</yLength>
+	<attempt>X = aa;   Y = aa;   Z = bbbb; I = 2; &lt;i&gt;Failed&lt;/i&gt;</attempt>
+</structure>

@@ -1,113 +1,71 @@
 <script setup lang="ts">
-import { onMounted, provide, watch } from 'vue';
+import { onBeforeUnmount, onMounted, provide, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   HomePage,
   EditorView,
+  createBeforeUnloadHandler,
   saveDocumentKey,
+  runProtectedDocumentAction,
+  useApplicationCommands,
   useDocumentStore,
-  useHistoryStore,
-  useSimulationStore,
 } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import DesktopAppHeader from './DesktopAppHeader.vue';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
-const historyStore = useHistoryStore();
-const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+const commands = useApplicationCommands(fileService, (message) => window.alert(message));
+let unlistenMenu: (() => void) | null = null;
+let unlistenClose: (() => void) | null = null;
+let closeApproved = false;
+docStore.restoreRecoveryDraft();
+const beforeUnload = createBeforeUnloadHandler(
+  () => docStore.currentView === 'editor' && docStore.isDirty,
+);
+window.addEventListener('beforeunload', beforeUnload);
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', beforeUnload);
+  unlistenMenu?.();
+  unlistenClose?.();
+});
 
-async function saveCurrentDocument() {
-  try {
-    const name = docStore.fileName ?? 'untitled.jff';
-    const saved = await saveAutomaton(fileService, docStore.automaton, name);
-    if (saved) {
-      docStore.markSaved(name);
-      updateTitle();
-    }
-  } catch (err) {
-    console.error('Failed to save:', err);
-  }
+async function saveCurrentDocument(): Promise<boolean> {
+  const result = await commands.saveDocument(false);
+  if (result) updateTitle();
+  return result;
 }
 
 provide(saveDocumentKey, saveCurrentDocument);
 
-function handleNew(kind: AutomatonKind) {
-  docStore.newDocument(kind);
-  historyStore.clear();
-  simStore.stop();
-  updateTitle();
+async function handleNew(kind: AutomatonKind) {
+  if (await commands.newDocument(kind)) updateTitle();
 }
 
 async function handleOpen() {
-  try {
-    const result = await openAutomaton(fileService);
-    if (result) {
-      docStore.loadAutomaton(result.automaton, result.fileName);
-      historyStore.clear();
-      simStore.stop();
-      updateTitle();
-    }
-  } catch (err) {
-    console.error('Failed to open:', err);
-  }
+  if (await commands.openDocument()) updateTitle();
 }
 
-onMounted(() => {
-  void listen<string>('menu-command', async (event) => {
+onMounted(async () => {
+  unlistenMenu = await listen<string>('menu-command', async (event) => {
     const command = event.payload;
+    await commands.handleMenuCommand(command);
+  });
 
-    switch (command) {
-      case 'menu:new-fa':
-        docStore.newDocument('fa');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
-        break;
-      case 'menu:new-pda':
-        docStore.newDocument('pda');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
-        break;
-      case 'menu:new-tm':
-        docStore.newDocument('turing');
-        historyStore.clear();
-        simStore.stop();
-        updateTitle();
-        break;
-      case 'menu:open':
-        await handleOpen();
-        break;
-      case 'menu:save':
-        await saveCurrentDocument();
-        break;
-      case 'menu:export-png': {
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-          canvas.toBlob(async (blob) => {
-            if (blob) {
-              const pngName =
-                (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-              await fileService.exportImage(blob, pngName);
-            }
-          });
-        }
-        break;
-      }
-      case 'menu:undo':
-        historyStore.undo();
-        break;
-      case 'menu:redo':
-        historyStore.redo();
-        break;
-      case 'menu:home':
-        simStore.stop();
-        docStore.goHome();
-        break;
-    }
+  const nativeWindow = getCurrentWindow();
+  unlistenClose = await nativeWindow.onCloseRequested(async (event) => {
+    if (closeApproved || docStore.currentView !== 'editor' || !docStore.isDirty) return;
+    event.preventDefault();
+    await runProtectedDocumentAction({
+      isDirty: true,
+      save: saveCurrentDocument,
+      action: async () => {
+        closeApproved = true;
+        await nativeWindow.close();
+      },
+    });
   });
 
   updateTitle();
@@ -128,7 +86,12 @@ function updateTitle() {
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage @new="handleNew" @open="handleOpen" />
+      <HomePage
+        :can-resume="docStore.canResume"
+        @new="handleNew"
+        @open="handleOpen"
+        @resume="docStore.resume"
+      />
     </template>
     <template v-else>
       <DesktopAppHeader />

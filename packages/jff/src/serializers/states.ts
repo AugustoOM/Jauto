@@ -1,4 +1,5 @@
 import type { AutomatonState } from '@jauto/core';
+import { escapeXml } from '../xml';
 
 export function serializeStates(states: readonly AutomatonState[]): string {
   return states
@@ -13,13 +14,4 @@ export function serializeStates(states: readonly AutomatonState[]): string {
       return `\t\t<state id="${escapeXml(s.id)}"${nameAttr}>\n${inner}\t\t</state>`;
     })
     .join('\n');
-}
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }

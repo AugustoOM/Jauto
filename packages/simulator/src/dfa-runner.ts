@@ -1,6 +1,7 @@
 import type { FiniteAutomaton } from '@jauto/core';
 import type { SimulationRunner, StepResult, RunResult, SimulationStatus } from './types';
 import type { DFAConfig } from './configs';
+import { validateRunBudget } from './run-budget';
 
 export function createDFARunner(
   automaton: FiniteAutomaton,
@@ -9,6 +10,11 @@ export function createDFARunner(
   const initialState = automaton.states.find((s) => s.isInitial);
   if (!initialState) throw new Error('No initial state');
   const initialId = initialState.id;
+  const statesById = new Map(automaton.states.map((state) => [state.id, state]));
+  const transitionsByState = new Map<string, typeof automaton.transitions>();
+  for (const transition of automaton.transitions) {
+    transitionsByState.set(transition.from, [...(transitionsByState.get(transition.from) ?? []), transition]);
+  }
 
   let config: DFAConfig = {
     currentState: initialId,
@@ -17,62 +23,88 @@ export function createDFARunner(
   };
   let stepIndex = 0;
   let halted = false;
+  let canceled = false;
+  let path: string[] = [];
+  let lastTransitionId: string | undefined;
 
   function getStatus(): SimulationStatus {
+    if (canceled) return 'canceled';
     if (config.remainingInput.length === 0) {
-      const state = automaton.states.find((s) => s.id === config.currentState);
+      const state = statesById.get(config.currentState);
       return state?.isFinal ? 'accepted' : 'rejected';
     }
     return halted ? 'rejected' : 'running';
   }
 
   function step(): StepResult<DFAConfig> {
-    if (halted || config.remainingInput.length === 0) {
-      return { config, status: getStatus(), stepIndex };
+    if (getStatus() !== 'running') {
+      return snapshot();
     }
 
-    const symbol = config.remainingInput[0]!;
-    const transition = automaton.transitions.find(
-      (t) => t.from === config.currentState && t.read === symbol,
+    const transition = (transitionsByState.get(config.currentState) ?? []).find(
+      (t) => t.from === config.currentState && t.read.length > 0 && config.remainingInput.startsWith(t.read),
     );
 
     if (!transition) {
       halted = true;
-      return { config, status: 'rejected', stepIndex };
+      return snapshot();
     }
 
     config = {
       currentState: transition.to,
-      remainingInput: config.remainingInput.slice(1),
-      inputIndex: config.inputIndex + 1,
+      remainingInput: config.remainingInput.slice(transition.read.length),
+      inputIndex: config.inputIndex + transition.read.length,
     };
+    path.push(transition.id);
+    lastTransitionId = transition.id;
     stepIndex++;
-    return { config, status: getStatus(), stepIndex };
+    return snapshot([transition.id]);
+  }
+
+  function snapshot(transitionIds: readonly string[] = []): StepResult<DFAConfig> {
+    const status = getStatus();
+    return {
+      config,
+      configurations: [{ id: `${config.currentState}\u0000${config.inputIndex}`, config, transitionId: lastTransitionId, path: lastTransitionId ? [lastTransitionId] : [] }],
+      transitionIds,
+      acceptingPath: status === 'accepted' ? path : undefined,
+      status,
+      stepIndex,
+    };
   }
 
   function run(maxSteps = 10000): RunResult<DFAConfig> {
+    validateRunBudget(maxSteps);
     const steps: StepResult<DFAConfig>[] = [];
     while (steps.length < maxSteps) {
       const result = step();
       steps.push(result);
       if (result.status !== 'running') break;
     }
-    const final = steps.at(-1)!;
-    return { accepted: final.status === 'accepted', steps, finalConfig: final.config };
+    const status = getStatus();
+    const outcome = status === 'running' ? 'incomplete' : status;
+    return { accepted: outcome === 'accepted', outcome, incompleteReason: outcome === 'incomplete' ? 'step-limit' : undefined, steps, finalConfig: config };
   }
 
   function reset() {
     config = { currentState: initialId, remainingInput: input, inputIndex: 0 };
     stepIndex = 0;
     halted = false;
+    canceled = false;
+    path = [];
+    lastTransitionId = undefined;
   }
+
+  function cancel() { canceled = true; }
 
   return {
     step,
     run,
     reset,
-    get isHalted() { return halted || config.remainingInput.length === 0; },
+    cancel,
+    get isHalted() { return canceled || halted || config.remainingInput.length === 0; },
     get isAccepted() { return getStatus() === 'accepted'; },
     get currentConfig() { return config; },
+    get currentStep() { return snapshot(); },
   };
 }

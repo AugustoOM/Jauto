@@ -21,5 +21,7 @@ export interface TMConfig {
   currentState: string;
   tape: readonly string[];
   headPosition: number;
+  tapes: readonly (readonly string[])[];
+  headPositions: readonly number[];
   stepCount: number;
 }

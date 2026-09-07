@@ -1,10 +1,18 @@
-import type { AnyAutomaton, AutomatonKind, AutomatonState, FiniteAutomaton, PushdownAutomaton, TuringMachine } from './types';
+import type {
+  AnyAutomaton,
+  AutomatonState,
+  FiniteAutomaton,
+  PushdownAutomaton,
+  TuringMachine,
+} from './types';
 import { getTransitionsFrom } from './graph';
+import { getInputAlphabet, getStackAlphabet, getTapeAlphabet } from './alphabets';
 
 export interface ValidationDiagnostic {
   readonly level: 'error' | 'warning';
   readonly message: string;
   readonly stateId?: string;
+  readonly transitionId?: string;
 }
 
 export function hasInitialState(automaton: AnyAutomaton): boolean {
@@ -30,10 +38,17 @@ function checkFADeterminism(automaton: FiniteAutomaton): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
     const readSymbols = transitions.map((t) => t.read);
-    const hasEpsilon = readSymbols.some((s) => s === '');
-    if (hasEpsilon) return false;
-    const uniqueSymbols = new Set(readSymbols);
-    if (uniqueSymbols.size !== readSymbols.length) return false;
+    if (readSymbols.some((symbol) => symbol === '')) return false;
+    for (let i = 0; i < readSymbols.length; i++) {
+      for (let j = i + 1; j < readSymbols.length; j++) {
+        if (
+          readSymbols[i]!.startsWith(readSymbols[j]!) ||
+          readSymbols[j]!.startsWith(readSymbols[i]!)
+        ) {
+          return false;
+        }
+      }
+    }
   }
   return true;
 }
@@ -41,25 +56,39 @@ function checkFADeterminism(automaton: FiniteAutomaton): boolean {
 function checkPDADeterminism(automaton: PushdownAutomaton): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
-    for (const t of transitions) {
-      const matches = transitions.filter(
-        (other) => other.id !== t.id && other.read === t.read && other.pop === t.pop,
-      );
-      if (matches.length > 0) return false;
+    for (let i = 0; i < transitions.length; i++) {
+      for (let j = i + 1; j < transitions.length; j++) {
+        if (
+          prefixesOverlap(transitions[i]!.read, transitions[j]!.read) &&
+          prefixesOverlap(transitions[i]!.pop, transitions[j]!.pop)
+        )
+          return false;
+      }
     }
   }
   return true;
+}
+
+function prefixesOverlap(left: string, right: string): boolean {
+  return left.startsWith(right) || right.startsWith(left);
 }
 
 function checkTMDeterminism(automaton: TuringMachine): boolean {
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
     for (const t of transitions) {
-      const matches = transitions.filter((other) => other.id !== t.id && other.read === t.read);
+      const read = tmReadKey(t);
+      const matches = transitions.filter((other) => other.id !== t.id && tmReadKey(other) === read);
       if (matches.length > 0) return false;
     }
   }
   return true;
+}
+
+function tmReadKey(transition: TuringMachine['transitions'][number]): string {
+  return (transition.tapeActions ?? [{ read: transition.read }])
+    .map((action) => action.read || '\u25A1')
+    .join('\u0000');
 }
 
 export function isComplete(automaton: AnyAutomaton): boolean {
@@ -74,27 +103,44 @@ export function isComplete(automaton: AnyAutomaton): boolean {
 }
 
 function checkFACompleteness(automaton: FiniteAutomaton): boolean {
-  const alphabet = new Set<string>();
-  for (const t of automaton.transitions) {
-    if (t.read !== '') alphabet.add(t.read);
-  }
+  const alphabet = getInputAlphabet(automaton);
 
   for (const state of automaton.states) {
     const transitions = getTransitionsFrom(automaton, state.id);
-    const covered = new Set(transitions.map((t) => t.read));
     for (const symbol of alphabet) {
-      if (!covered.has(symbol)) return false;
+      if (!transitions.some((transition) => transition.read.startsWith(symbol))) return false;
     }
   }
   return true;
 }
 
-function checkPDACompleteness(_automaton: PushdownAutomaton): boolean {
-  return true;
+function checkPDACompleteness(automaton: PushdownAutomaton): boolean {
+  const inputAlphabet = [...getInputAlphabet(automaton)];
+  const stackAlphabet = [...getStackAlphabet(automaton)];
+  if (inputAlphabet.length === 0) return false;
+  return automaton.states.every((state) => {
+    const transitions = getTransitionsFrom(automaton, state.id);
+    return inputAlphabet.every((input) =>
+      stackAlphabet.every((stack) =>
+        transitions.some(
+          (transition) =>
+            (transition.read === '' || transition.read.startsWith(input)) &&
+            (transition.pop === '' || transition.pop.startsWith(stack)),
+        ),
+      ),
+    );
+  });
 }
 
-function checkTMCompleteness(_automaton: TuringMachine): boolean {
-  return true;
+function checkTMCompleteness(automaton: TuringMachine): boolean {
+  if (automaton.tapes !== 1) return false;
+  const tapeAlphabet = getTapeAlphabet(automaton);
+  return automaton.states.every((state) => {
+    const reads = new Set(
+      getTransitionsFrom(automaton, state.id).map((transition) => transition.read || '\u25A1'),
+    );
+    return [...tapeAlphabet].every((symbol) => reads.has(symbol));
+  });
 }
 
 export function hasUnreachableStates(automaton: AnyAutomaton): boolean {
@@ -118,29 +164,97 @@ export function hasUnreachableStates(automaton: AnyAutomaton): boolean {
   return automaton.states.some((s) => !reachable.has(s.id));
 }
 
-export function validate(automaton: AnyAutomaton): ValidationDiagnostic[] {
+/** Structural errors prevent safe editing/export; incomplete drafts are allowed. */
+export function validateStructure(automaton: AnyAutomaton): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
+  const stateIds = new Set<string>();
+  for (const state of automaton.states) {
+    if (!state.id || stateIds.has(state.id)) {
+      diagnostics.push({
+        level: 'error',
+        message: `Duplicate or empty state ID: "${state.id}"`,
+        stateId: state.id,
+      });
+    }
+    stateIds.add(state.id);
+    if (!Number.isFinite(state.x) || !Number.isFinite(state.y)) {
+      diagnostics.push({
+        level: 'error',
+        message: 'State coordinates must be finite numbers',
+        stateId: state.id,
+      });
+    }
+  }
+  if (automaton.states.filter((s) => s.isInitial).length > 1) {
+    diagnostics.push({ level: 'error', message: 'Multiple initial states defined' });
+  }
+  const transitionIds = new Set<string>();
+  for (const t of automaton.transitions) {
+    if (!t.id || transitionIds.has(t.id)) {
+      diagnostics.push({
+        level: 'error',
+        message: `Duplicate or empty transition ID: "${t.id}"`,
+        transitionId: t.id,
+      });
+    }
+    transitionIds.add(t.id);
+    for (const [role, id] of [
+      ['source', t.from],
+      ['target', t.to],
+    ]) {
+      if (!stateIds.has(id!)) {
+        diagnostics.push({
+          level: 'error',
+          message: `Transition references missing ${role} state "${id}"`,
+          transitionId: t.id,
+        });
+      }
+    }
+  }
+  if (automaton.kind === 'turing') {
+    if (!Number.isInteger(automaton.tapes) || automaton.tapes < 1) {
+      diagnostics.push({ level: 'error', message: 'Tape count must be a positive integer' });
+    }
+    for (const t of automaton.transitions) {
+      const actions = t.tapeActions ?? [t];
+      if (actions.length !== automaton.tapes) {
+        diagnostics.push({
+          level: 'error',
+          message: 'TM transition action count must match the tape count',
+          transitionId: t.id,
+        });
+      }
+      if (
+        actions[0] &&
+        (actions[0].read !== t.read || actions[0].write !== t.write || actions[0].move !== t.move)
+      ) {
+        diagnostics.push({
+          level: 'error',
+          message: 'TM primary transition fields must match tape 1',
+          transitionId: t.id,
+        });
+      }
+      if (actions.some((action) => !['L', 'R', 'S'].includes(action.move))) {
+        diagnostics.push({
+          level: 'error',
+          message: 'TM movement must be L, R or S',
+          transitionId: t.id,
+        });
+      }
+    }
+  }
+  return diagnostics;
+}
+
+export function validate(automaton: AnyAutomaton): ValidationDiagnostic[] {
+  const diagnostics = validateStructure(automaton);
 
   if (!hasInitialState(automaton)) {
     diagnostics.push({ level: 'error', message: 'No initial state defined' });
   }
 
-  const initialStates = automaton.states.filter((s) => s.isInitial);
-  if (initialStates.length > 1) {
-    diagnostics.push({ level: 'error', message: 'Multiple initial states defined' });
-  }
-
   if (!automaton.states.some((s) => s.isFinal)) {
     diagnostics.push({ level: 'warning', message: 'No accepting (final) states defined' });
-  }
-
-  for (const t of automaton.transitions) {
-    if (!automaton.states.some((s) => s.id === t.from)) {
-      diagnostics.push({ level: 'error', message: `Transition references missing source state "${t.from}"` });
-    }
-    if (!automaton.states.some((s) => s.id === t.to)) {
-      diagnostics.push({ level: 'error', message: `Transition references missing target state "${t.to}"` });
-    }
   }
 
   if (hasUnreachableStates(automaton)) {

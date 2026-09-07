@@ -66,4 +66,35 @@ describe('NFA Runner', () => {
     const runner = createNFARunner(nfa, '');
     expect(runner.isAccepted).toBe(true);
   });
+
+  it('terminates epsilon closure when transitions contain a cycle', () => {
+    const nfa = buildNFA(
+      [s('0', { isInitial: true }), s('1'), s('2', { isFinal: true })],
+      [t('t0', '0', '1', ''), t('t1', '1', '0', ''), t('t2', '1', '2', 'a')],
+    );
+    expect(createNFARunner(nfa, 'a').run().outcome).toBe('accepted');
+  });
+
+  it('explores prefix-overlapping string transitions at different input positions', () => {
+    const nfa = buildNFA(
+      [s('0', { isInitial: true }), s('1'), s('2'), s('3', { isFinal: true })],
+      [t('t0', '0', '1', 'a'), t('t1', '0', '2', 'ab'), t('t2', '1', '3', 'bc')],
+    );
+    expect(createNFARunner(nfa, 'abc').run().outcome).toBe('accepted');
+    expect(createNFARunner(nfa, 'ab').run().outcome).toBe('rejected');
+  });
+
+  it('reports exact branch identities, transition IDs, and an accepting witness', () => {
+    const nfa = buildNFA(
+      [s('0', { isInitial: true }), s('1'), s('2'), s('3', { isFinal: true })],
+      [t('epsilon', '0', '1', ''), t('left', '1', '2', 'a'), t('right', '1', '3', 'a')],
+    );
+    const runner = createNFARunner(nfa, 'a');
+
+    expect(runner.currentStep.transitionIds).toEqual(['epsilon']);
+    const result = runner.step();
+    expect(result.transitionIds).toEqual(['left', 'right']);
+    expect(result.configurations.map((branch) => branch.id)).toEqual(['2\u00001', '3\u00001']);
+    expect(result.acceptingPath).toEqual(['epsilon', 'right']);
+  });
 });

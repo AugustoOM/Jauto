@@ -2,19 +2,20 @@ import type { AnyAutomaton, AutomatonState, AnyTransition } from '@jauto/core';
 import type { SelectedElement } from '../stores/document';
 import type { TransitionHighlight } from '../stores/simulation';
 import { STATE_RADIUS } from '../constants';
-import {
-  getEdgeGeometry,
-  getParallelEdgeSiblings,
-  getSelfLoopGeometry,
-  getSelfLoopSiblings,
-} from './transitionGeometry';
+import { getEdgeGeometry, getSelfLoopGeometry } from './transitionGeometry';
+import { buildRenderIndex, transitionGroupKey } from './renderIndex';
 
 const ARROW_SIZE = 6;
+let frameCssCache: Map<string, string> | null = null;
 
 export function readCssVar(name: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback;
+  const cached = frameCssCache?.get(name);
+  if (cached) return cached;
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
+  const value = v || fallback;
+  frameCssCache?.set(name, value);
+  return value;
 }
 
 export interface RenderOptions {
@@ -23,7 +24,9 @@ export interface RenderOptions {
   scale: number;
   selected: SelectedElement;
   highlightedStates?: ReadonlySet<string>;
-  activeTransition?: TransitionHighlight | null;
+  activeTransitions?: readonly TransitionHighlight[];
+  background?: string | null;
+  showGrid?: boolean;
 }
 
 export function useCanvasRenderer() {
@@ -34,36 +37,80 @@ export function useCanvasRenderer() {
     automaton: AnyAutomaton,
     options: RenderOptions,
   ) {
-    const { offsetX, offsetY, scale, selected, highlightedStates, activeTransition } = options;
+    frameCssCache = new Map();
+    const {
+      offsetX,
+      offsetY,
+      scale,
+      selected,
+      highlightedStates,
+      activeTransitions = [],
+    } = options;
 
-    const canvasBg = readCssVar('--color-canvas-bg', '#111111');
+    const canvasBg =
+      options.background === undefined
+        ? readCssVar('--color-canvas-bg', '#111111')
+        : options.background;
     const gridColor = readCssVar('--color-canvas-grid', '#1a1a1a');
     const fontSans = readCssVar('--font-family', 'DM Sans, system-ui, sans-serif');
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = canvasBg;
-    ctx.fillRect(0, 0, width, height);
+    if (canvasBg !== null) {
+      ctx.fillStyle = canvasBg;
+      ctx.fillRect(0, 0, width, height);
+    }
 
-    drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
+    if (options.showGrid !== false)
+      drawGrid(ctx, width, height, offsetX, offsetY, scale, gridColor);
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
 
+    const { statesById, transitionGroups } = buildRenderIndex(automaton);
+    const margin = 100 / scale;
+    const visible = {
+      minX: -offsetX / scale - margin,
+      minY: -offsetY / scale - margin,
+      maxX: (width - offsetX) / scale + margin,
+      maxY: (height - offsetY) / scale + margin,
+    };
+
     for (const t of automaton.transitions) {
-      const from = automaton.states.find((s) => s.id === t.from);
-      const to = automaton.states.find((s) => s.id === t.to);
+      const from = statesById.get(t.from);
+      const to = statesById.get(t.to);
       if (!from || !to) continue;
+      const controlX = typeof t.controlX === 'number' ? t.controlX : (from.x + to.x) / 2;
+      const controlY = typeof t.controlY === 'number' ? t.controlY : (from.y + to.y) / 2;
+      if (!boundsIntersectViewport([from.x, to.x, controlX], [from.y, to.y, controlY], visible))
+        continue;
 
       const isSelected = selected?.type === 'transition' && selected.id === t.id;
-      const isActiveTransition = activeTransition?.transitionId === t.id;
-      drawTransition(ctx, from, to, t, automaton, isSelected, isActiveTransition, fontSans);
+      const isActiveTransition = activeTransitions.some((active) => active.transitionId === t.id);
+      const groupKey = transitionGroupKey(t.from, t.to);
+      drawTransition(
+        ctx,
+        from,
+        to,
+        t,
+        transitionGroups.get(groupKey) ?? [t],
+        isSelected,
+        isActiveTransition,
+        fontSans,
+      );
     }
 
     for (const state of automaton.states) {
+      if (
+        state.x < visible.minX ||
+        state.x > visible.maxX ||
+        state.y < visible.minY ||
+        state.y > visible.maxY
+      )
+        continue;
       const isSelected = selected?.type === 'state' && selected.id === state.id;
       const isHighlighted = highlightedStates?.has(state.id) ?? false;
-      const simulationRole = getSimulationStateRole(state.id, activeTransition);
+      const simulationRole = getSimulationStateRole(state.id, activeTransitions);
       drawState(ctx, state, isSelected, isHighlighted, simulationRole, fontSans);
     }
 
@@ -74,10 +121,25 @@ export function useCanvasRenderer() {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('Right-click the canvas to add a state', width / 2, height / 2);
+      frameCssCache = null;
       return;
     }
 
     ctx.restore();
+    frameCssCache = null;
+  }
+
+  function boundsIntersectViewport(
+    xs: readonly number[],
+    ys: readonly number[],
+    viewport: { minX: number; minY: number; maxX: number; maxY: number },
+  ) {
+    return (
+      Math.max(...xs) >= viewport.minX &&
+      Math.min(...xs) <= viewport.maxX &&
+      Math.max(...ys) >= viewport.minY &&
+      Math.min(...ys) <= viewport.maxY
+    );
   }
 
   function drawGrid(
@@ -152,7 +214,11 @@ export function useCanvasRenderer() {
 
     ctx.beginPath();
     ctx.arc(x, y, STATE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = roleColor ? colorWithAlpha(roleColor, 0.16) : isHighlighted ? hlFill : stateFill;
+    ctx.fillStyle = roleColor
+      ? colorWithAlpha(roleColor, 0.16)
+      : isHighlighted
+        ? hlFill
+        : stateFill;
     ctx.fill();
     ctx.strokeStyle = roleColor ?? (isHighlighted || isSelected ? accent : strokeMain);
     ctx.lineWidth = roleColor ? 3.5 : isHighlighted ? 3 : isSelected ? 2.5 : 1.5;
@@ -206,7 +272,7 @@ export function useCanvasRenderer() {
     from: AutomatonState,
     to: AutomatonState,
     transition: AnyTransition,
-    automaton: AnyAutomaton,
+    siblings: readonly AnyTransition[],
     isSelected: boolean,
     isActiveTransition: boolean,
     fontSans: string,
@@ -219,21 +285,11 @@ export function useCanvasRenderer() {
     ctx.fillStyle = isActiveTransition ? simulationEdge : isSelected ? accent : strokeDefault;
 
     if (from.id === to.id) {
-      const selfLoopSiblings = getSelfLoopSiblings(automaton.transitions, from.id);
-      drawSelfLoop(
-        ctx,
-        from,
-        transition,
-        selfLoopSiblings,
-        fontSans,
-        isSelected,
-        isActiveTransition,
-      );
+      drawSelfLoop(ctx, from, transition, siblings, fontSans, isSelected, isActiveTransition);
       return;
     }
 
-    const parallelSiblings = getParallelEdgeSiblings(automaton.transitions, from.id, to.id);
-    const geometry = getEdgeGeometry(from, to, parallelSiblings, transition);
+    const geometry = getEdgeGeometry(from, to, siblings, transition);
     if (!geometry) return;
     const tail = getArrowTailPoint(geometry.endX, geometry.endY, geometry.arrowAngle);
 
@@ -344,11 +400,10 @@ export function useCanvasRenderer() {
 
   function getSimulationStateRole(
     stateId: string,
-    activeTransition: TransitionHighlight | null | undefined,
+    activeTransitions: readonly TransitionHighlight[],
   ) {
-    if (!activeTransition) return null;
-    const isSource = activeTransition.sourceStateId === stateId;
-    const isTarget = activeTransition.targetStateId === stateId;
+    const isSource = activeTransitions.some((transition) => transition.sourceStateId === stateId);
+    const isTarget = activeTransitions.some((transition) => transition.targetStateId === stateId);
     if (isSource && isTarget) return 'both';
     if (isSource) return 'source';
     if (isTarget) return 'target';
@@ -382,8 +437,12 @@ export function useCanvasRenderer() {
       return `${read}, ${pop} \u2192 ${push}`;
     }
     if ('write' in t && 'move' in t) {
-      const write = t.write || '\u25A1';
-      return `${read} \u2192 ${write}, ${t.move}`;
+      return (t.tapeActions ?? [t])
+        .map(
+          (action, index) =>
+            `${t.tapeActions ? `${index + 1}:` : ''}${action.read || '\u25A1'} \u2192 ${action.write || '\u25A1'}, ${action.move}`,
+        )
+        .join(' | ');
     }
     return read;
   }

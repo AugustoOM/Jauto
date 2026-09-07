@@ -8,6 +8,8 @@
 
 ## Features (MVP)
 
+Compatibility is under active development. See the [JFLAP 7.1 compatibility contract](docs/COMPATIBILITY.md) for current limitations and the [action plan](ACTION_PLAN.md) for progress.
+
 - **DFA / NFA** — create, edit, and simulate finite automata
 - **PDA** — pushdown automata with stack visualization
 - **Turing Machine** — single-tape Turing machine editor and simulator
@@ -25,7 +27,7 @@
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 22
-- [pnpm](https://pnpm.io/) >= 10
+- [pnpm](https://pnpm.io/) 11.x (the repository pins 11.5.2)
 - [Rust](https://www.rust-lang.org/tools/install) with Cargo for native desktop builds
 
 ### Setup
@@ -100,12 +102,16 @@ The `Desktop native releases` workflow builds:
 - Windows x64 installers on `windows-latest`
 - macOS universal installers for Intel and Apple Silicon on `macos-latest`
 
-The generated `.msi`, `.exe`, `.dmg`, and `.app.tar.gz` files are attached to
+The generated `.msi`, `.exe`, and `.dmg` files are attached to
 the GitHub Release for that tag. The workflow can also be run manually from
 GitHub Actions with a `release_tag` value.
 
-The macOS installer is currently unsigned. Users may need to approve it manually
-from macOS security settings until Apple Developer ID signing is configured.
+See [the release runbook](docs/RELEASING.md) for required signing secrets,
+quality gates, checksums, and signature verification.
+
+Stable desktop releases require Windows signing and Apple Developer ID signing/notarization
+credentials in GitHub Actions. The release workflow refuses to publish stable installers when
+those credentials are unavailable.
 
 ## Project Structure
 
