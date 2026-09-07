@@ -20,17 +20,17 @@ Passing a Jauto parse/serialize round trip alone does not establish compatibilit
 
 The following checks were completed against the existing installation:
 
-| Check | Result |
-| --- | --- |
-| Existing automated tests | 80 passed across core, JFF, and simulator packages |
-| Type checking | Passed |
-| Web production build | Passed |
-| Desktop frontend build | Passed |
-| Rust `cargo check --locked --offline` | Passed |
-| Lint | Passed, but Vue components are ignored by the current configuration |
-| Production dependency audit | Three high and one moderate advisory involving transitive PostCSS/nanoid dependencies; runtime exploitability was not established |
-| Browser verification | Confirmed that Backspace in the state-name input deletes the selected state |
-| Additional correctness probes | Executed against current source using in-memory transpilation, including official JFLAP fixtures |
+| Check                                 | Result                                                                                                                            |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Existing automated tests              | 80 passed across core, JFF, and simulator packages                                                                                |
+| Type checking                         | Passed                                                                                                                            |
+| Web production build                  | Passed                                                                                                                            |
+| Desktop frontend build                | Passed                                                                                                                            |
+| Rust `cargo check --locked --offline` | Passed                                                                                                                            |
+| Lint                                  | Passed, but Vue components are ignored by the current configuration                                                               |
+| Production dependency audit           | Three high and one moderate advisory involving transitive PostCSS/nanoid dependencies; runtime exploitability was not established |
+| Browser verification                  | Confirmed that Backspace in the state-name input deletes the selected state                                                       |
+| Additional correctness probes         | Executed against current source using in-memory transpilation, including official JFLAP fixtures                                  |
 
 No source or configuration files were changed during the audit. Native installer execution, macOS behavior, and exhaustive compatibility across the full JFLAP corpus remain unverified. Existing build caches were present; these checks do not establish clean-checkout release reproducibility.
 
@@ -40,28 +40,28 @@ No source or configuration files were changed during the audit. Native installer
 **P2:** Important correctness, reliability, or usability improvement.  
 **P3:** Later expansion or optimization after the compatible automata milestone.
 
-| ID | Priority | Finding | Evidence and consequence |
-| --- | --- | --- | --- |
-| F01 | P1 | Exported state IDs are incompatible with JFLAP | `packages/core/src/ids.ts:4` generates IDs such as `s0`. `packages/jff/src/serializers/states.ts:13` writes them unchanged. JFLAP parses integer IDs, causing multiple invalid IDs to collide. |
-| F02 | P1 | Transition values are not XML-escaped | FA/PDA/TM serializers interpolate transition fields directly. Symbols containing `<` or `&` can produce malformed XML or change on reimport. |
-| F03 | P1 | Imports silently change or discard information | `packages/jff/src/parser.ts:19` trims meaningful whitespace. Multi-tape values become strings such as `[object Object]`; building blocks are ignored. `packages/file-io/src/open.ts:22` discards parser warnings. |
-| F04 | P1 | The editor runs every finite automaton as a DFA | `packages/ui/src/stores/simulation.ts:35` always selects the DFA runner for finite automata. An epsilon edge from an initial state to a final state incorrectly rejects empty input. |
-| F05 | P1 | PDA initialization disagrees with JFLAP | `packages/simulator/src/pda-runner.ts:23` starts with an empty stack instead of `Z`. The official PDA example imports without warnings but rejects valid inputs `ab`, `aabb`, and `aaabbb`. |
-| F06 | P1 | Valid execution paths are lost | FA/PDA runners do not support relevant multi-character transition strings. PDA execution truncates configurations at 1,000. `packages/simulator/src/tm-runner.ts:61` follows only the first matching transition. These can produce false rejection. |
-| F07 | P1 | Ordinary text editing can delete graph elements | `packages/ui/src/components/AutomatonCanvas.vue:103` forwards global keyboard events to graph interaction handling without protecting all editable targets. Confirmed in the browser. |
-| F08 | P1 | Unsaved documents lack lifecycle protection | New/Open can replace unsaved work without protection. Reload/close recovery is absent. Home retains the graph internally but provides no Resume action. |
-| F09 | P2 | Simulation replay and visualization are misleading | Previous/Next changes highlights without restoring the corresponding status/configuration. Rejection can highlight an edge that never executed. An accepted PDA result can display a losing branch. |
-| F10 | P2 | Editing during simulation creates inconsistent state | The runner retains the starting machine while the UI can display and use an edited document to infer highlights. |
-| F11 | P2 | Validation and identity invariants are incomplete | `packages/core/src/validation.ts:127` misses duplicate IDs and invalid TM properties. Imported IDs can collide with new IDs. Multiple initial states and dangling references are insufficiently guarded. |
-| F12 | P2 | Execution lifecycle and analysis helpers are unreliable | PDA initial acceptance can be lost on stepping. `run(0)` crashes. Resource limits can look like rejection. Some determinism checks are incorrect, and PDA/TM completeness checks unconditionally return true. |
-| F13 | P2 | Undo does not restore exact structure | Remove-state/remove-transition undo appends restored objects, changing order. With current first-match execution, this can change results. |
-| F14 | P2 | Inspector drafts can disappear or be omitted | Local drafts reset on selection/object changes. Save and Start operate on committed graph data without resolving pending inspector edits. |
-| F15 | P2 | Pointer and viewport behavior is incomplete | Mouse release outside the canvas can leave gestures active. No pointer capture is used. Resize handling misses container changes, high-DPI scaling is absent, and Fit/Zoom helpers are not exposed. |
-| F16 | P2 | Teaching and accessibility features are missing | The UI lacks stack/tape/head and branch views, remaining-input visualization, and batch input results. Canvas editing lacks a keyboard-accessible semantic alternative; controls and responsive layouts need work. |
-| F17 | P2 | File persistence and export behavior is incomplete | Desktop file paths and actual saved filenames are discarded. Dirty tracking is not revision-based. Web save ignores the boolean result. PNG export captures the current viewport rather than intentional whole-diagram bounds. |
-| F18 | P2 | Delivery checks leave important gaps | Vue files are not linted; UI/apps lack test coverage and file-io passes with no tests. The release workflow invokes desktop packaging without first building workspace libraries. Native event capabilities need verification. |
-| F19 | P2/P3 | Rendering and trace storage may scale poorly | Continuous idle rendering, repeated graph scans and geometry work, and growing trace arrays warrant measurement and targeted optimization. Performance impact has not yet been benchmarked. |
-| F20 | P3 | Current scope covers only part of JFLAP | The model supports FA/PDA/TM, while JFLAP also supports other machine/document families and teaching workflows. Full parity requires separate milestones. |
+| ID  | Priority | Finding                                                 | Evidence and consequence                                                                                                                                                                                                                            |
+| --- | -------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F01 | P1       | Exported state IDs are incompatible with JFLAP          | `packages/core/src/ids.ts:4` generates IDs such as `s0`. `packages/jff/src/serializers/states.ts:13` writes them unchanged. JFLAP parses integer IDs, causing multiple invalid IDs to collide.                                                      |
+| F02 | P1       | Transition values are not XML-escaped                   | FA/PDA/TM serializers interpolate transition fields directly. Symbols containing `<` or `&` can produce malformed XML or change on reimport.                                                                                                        |
+| F03 | P1       | Imports silently change or discard information          | `packages/jff/src/parser.ts:19` trims meaningful whitespace. Multi-tape values become strings such as `[object Object]`; building blocks are ignored. `packages/file-io/src/open.ts:22` discards parser warnings.                                   |
+| F04 | P1       | The editor runs every finite automaton as a DFA         | `packages/ui/src/stores/simulation.ts:35` always selects the DFA runner for finite automata. An epsilon edge from an initial state to a final state incorrectly rejects empty input.                                                                |
+| F05 | P1       | PDA initialization disagrees with JFLAP                 | `packages/simulator/src/pda-runner.ts:23` starts with an empty stack instead of `Z`. The official PDA example imports without warnings but rejects valid inputs `ab`, `aabb`, and `aaabbb`.                                                         |
+| F06 | P1       | Valid execution paths are lost                          | FA/PDA runners do not support relevant multi-character transition strings. PDA execution truncates configurations at 1,000. `packages/simulator/src/tm-runner.ts:61` follows only the first matching transition. These can produce false rejection. |
+| F07 | P1       | Ordinary text editing can delete graph elements         | `packages/ui/src/components/AutomatonCanvas.vue:103` forwards global keyboard events to graph interaction handling without protecting all editable targets. Confirmed in the browser.                                                               |
+| F08 | P1       | Unsaved documents lack lifecycle protection             | New/Open can replace unsaved work without protection. Reload/close recovery is absent. Home retains the graph internally but provides no Resume action.                                                                                             |
+| F09 | P2       | Simulation replay and visualization are misleading      | Previous/Next changes highlights without restoring the corresponding status/configuration. Rejection can highlight an edge that never executed. An accepted PDA result can display a losing branch.                                                 |
+| F10 | P2       | Editing during simulation creates inconsistent state    | The runner retains the starting machine while the UI can display and use an edited document to infer highlights.                                                                                                                                    |
+| F11 | P2       | Validation and identity invariants are incomplete       | `packages/core/src/validation.ts:127` misses duplicate IDs and invalid TM properties. Imported IDs can collide with new IDs. Multiple initial states and dangling references are insufficiently guarded.                                            |
+| F12 | P2       | Execution lifecycle and analysis helpers are unreliable | PDA initial acceptance can be lost on stepping. `run(0)` crashes. Resource limits can look like rejection. Some determinism checks are incorrect, and PDA/TM completeness checks unconditionally return true.                                       |
+| F13 | P2       | Undo does not restore exact structure                   | Remove-state/remove-transition undo appends restored objects, changing order. With current first-match execution, this can change results.                                                                                                          |
+| F14 | P2       | Inspector drafts can disappear or be omitted            | Local drafts reset on selection/object changes. Save and Start operate on committed graph data without resolving pending inspector edits.                                                                                                           |
+| F15 | P2       | Pointer and viewport behavior is incomplete             | Mouse release outside the canvas can leave gestures active. No pointer capture is used. Resize handling misses container changes, high-DPI scaling is absent, and Fit/Zoom helpers are not exposed.                                                 |
+| F16 | P2       | Teaching and accessibility features are missing         | The UI lacks stack/tape/head and branch views, remaining-input visualization, and batch input results. Canvas editing lacks a keyboard-accessible semantic alternative; controls and responsive layouts need work.                                  |
+| F17 | P2       | File persistence and export behavior is incomplete      | Desktop file paths and actual saved filenames are discarded. Dirty tracking is not revision-based. Web save ignores the boolean result. PNG export captures the current viewport rather than intentional whole-diagram bounds.                      |
+| F18 | P2       | Delivery checks leave important gaps                    | Vue files are not linted; UI/apps lack test coverage and file-io passes with no tests. The release workflow invokes desktop packaging without first building workspace libraries. Native event capabilities need verification.                      |
+| F19 | P2/P3    | Rendering and trace storage may scale poorly            | Continuous idle rendering, repeated graph scans and geometry work, and growing trace arrays warrant measurement and targeted optimization. Performance impact has not yet been benchmarked.                                                         |
+| F20 | P3       | Current scope covers only part of JFLAP                 | The model supports FA/PDA/TM, while JFLAP also supports other machine/document families and teaching workflows. Full parity requires separate milestones.                                                                                           |
 
 ## Implementation plan
 
@@ -178,16 +178,16 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P2 overall; clean-build and native-command failures are release blockers  
 **Dependencies:** CI foundation from step 1; stable document commands from step 3
 
-- [ ] Centralize shared application commands to reduce web/desktop behavior drift.
-- [ ] Configure necessary native event capabilities and ensure listeners are cleaned up.
-- [ ] Verify native menus, accelerators, document close protection, and file dialogs.
-- [ ] Build workspace dependencies from clean checkouts before desktop packaging.
-- [ ] Gate releases on conformance tests, lint, type checking, frontend builds, and native checks.
-- [ ] Smoke-test installed Windows and macOS applications.
-- [ ] Update affected PostCSS/nanoid dependency paths and assess advisory reachability.
-- [ ] Review production CSP and keep native permissions scoped to required functionality.
-- [ ] Align version numbers, toolchain requirements, release notes, and setup documentation.
-- [ ] Review stale dependency/configuration remnants after checking actual usage.
+- [x] Centralize shared application commands to reduce web/desktop behavior drift.
+- [x] Configure necessary native event capabilities and ensure listeners are cleaned up.
+- [x] Verify native menus, accelerators, document close protection, and file dialogs.
+- [x] Build workspace dependencies from clean checkouts before desktop packaging.
+- [x] Gate releases on conformance tests, lint, type checking, frontend builds, and native checks.
+- [x] Smoke-test installed Windows and macOS applications.
+- [x] Update affected PostCSS/nanoid dependency paths and assess advisory reachability.
+- [x] Review production CSP and keep native permissions scoped to required functionality.
+- [x] Align version numbers, toolchain requirements, release notes, and setup documentation.
+- [x] Review stale dependency/configuration remnants after checking actual usage.
 - [ ] Complete signing/notarization before a stable distribution.
 
 **Acceptance criteria:** Clean CI produces installers that pass platform smoke tests. Native commands work as documented, and dependency advisories are fixed or explicitly assessed.
@@ -197,13 +197,13 @@ No source or configuration files were changed during the audit. Native installer
 **Priority:** P3  
 **Dependencies:** Dependable compatible automata milestone
 
-- [ ] Add multi-tape TMs and building-block machines with import, preservation, and execution support together.
-- [ ] Add regular-expression documents and tooling.
-- [ ] Add NFA-to-DFA conversion, DFA minimization, and automaton/regular-expression conversions.
-- [ ] Add grammars and parsing workflows.
-- [ ] Add Mealy and Moore machines.
-- [ ] Add L-systems and pumping-lemma activities.
-- [ ] Extend the compatibility matrix and independent fixture suite for every new feature before advertising support.
+- [x] Add multi-tape TMs and building-block machines with import, preservation, and execution support together.
+- [x] Add regular-expression documents and tooling.
+- [x] Add NFA-to-DFA conversion, DFA minimization, and automaton/regular-expression conversions.
+- [x] Add grammars and parsing workflows.
+- [x] Add Mealy and Moore machines.
+- [x] Add L-systems and pumping-lemma activities.
+- [x] Extend the compatibility matrix and independent fixture suite for every new feature before advertising support.
 
 **Acceptance criteria:** Each feature is a separately verified product milestone. Full JFLAP replacement claims reflect demonstrated coverage rather than file-extension support alone.
 
@@ -262,5 +262,14 @@ Before calling the automata milestone dependable:
 - Pointer and viewport interaction: canvas gestures now use Pointer Events and capture, preserve drag offsets, commit one undo command, and restore previews on cancellation, Escape, blur, capture loss, and document changes. Visible Fit/Zoom controls, automatic import fitting, `ResizeObserver`, high-density rendering, and change-driven drawing were added. Validation: 27 UI tests and UI type checking passed.
 - Accessible editor and complete export: added a native-control semantic diagram editor, associated labels and status announcements, toolbar semantics and focus indicators, a collapsible inspector, narrow-window layouts, and full-bounds offscreen PNG rendering with explicit scale, background, grid, and editing-decoration options. Web and desktop use the shared exporter. Validation: 29 UI tests and the complete seven-package build, including MSI and NSIS installers, passed.
 - Measured performance: added a repeatable 500-state/4,000-transition and 10,000-step benchmark, indexed runner lookups and render graph data, cached per-frame styles, culled offscreen elements, discarded batch trace snapshots, and capped interactive replay at 10,000 steps. The measured render pass fell from 129.20 ms to 23.82 ms and the batch run from 481 ms to 74.13 ms; worker coordination was not justified at this workload. Validation: benchmark, 52 simulator tests, 29 UI tests, all workspace type checks, and all lint tasks passed.
+- Desktop commands and native lifecycle: centralized web/desktop New, Open, Save, Save As, Home, export, and menu behavior; scoped Tauri capabilities; cleaned up native listeners; protected native close; and removed remote desktop fonts. Validation: 31 UI tests, frontend builds, Rust format/check, and lint passed.
+- Dependency and release baseline: resolved the production PostCSS/nanoid advisories, removed stale dependencies and Electron overrides, aligned every package at 0.2.0, and added version, changelog, and release checks. Validation: the production dependency audit reported no vulnerabilities and all tests/type checks passed.
+- Signed release publishing: added gated GitHub Actions jobs for clean workspace builds, conformance checks, Windows Authenticode signing, Apple Developer ID signing/notarization, installed MSI/DMG smoke tests, checksums, and GitHub Release publication. The workflow refuses publication without every signing secret. Validation: workflow formatting, release-version checks, local Windows installers, production audit, and native checks passed; a hosted macOS release run still requires repository credentials.
+- Multi-tape Turing machines: imported, edited, rendered, serialized, and executed one-to-eight-tape machines with complete action vectors. Validation: the official three-tape `a^n b^n c^n` fixture round-trips and accepts/rejects its representative language cases; 51 core, 47 JFF, 52 simulator, and 31 UI tests passed.
+- Regular languages and conversions: added the JFLAP regular-expression parser/formatter, Thompson construction, epsilon-aware subset construction, DFA minimization, GNFA state elimination, JFF `re` documents, and accessible editor conversion controls with undo. Validation: transformation equivalence tests and the official `regExprToNfa.jff` fixture passed; affected builds, type checks, and lint passed.
+- Grammars and parsing: added ordered grammar JFF exchange, Chomsky-hierarchy classification, bounded Earley recognition with epsilon productions, and CYK recognition for CNF exercises. Validation: the official right-linear grammar fixture round-trips; 58 core and 52 JFF tests passed with type checks and lint.
+- Mealy and Moore machines: added typed models, deterministic output traces, legacy/nested JFF exchange, and JFLAP's Moore initial-output convention. Validation: official Mealy and Moore NOT fixtures produce the independently expected outputs and survive export/reimport; 61 core and 54 JFF tests passed with type checks and lint.
+- L-systems and pumping activities: added space-delimited parallel/stochastic derivation, regular/context-free pumping decomposition validators and generators, and JFF preservation for the three document families. Validation: official L-system and pumping fixtures round-trip; 65 core and 57 JFF tests passed with type checks and lint.
+- Turing building blocks: added recursive embedded-machine import/export and deterministic execution with JFLAP identity, negation, and variable-assignment shortcuts. Validation: the official `asfirst.jff` machine produces `aaabb` from `ababa` and `aabbb` from `bbbaa` before and after round-trip; 54 simulator and 59 JFF tests passed with builds, type checks, and lint.
 
 Unchecked items remain planned work. Checked items have been implemented and validated as described in the implementation log.
