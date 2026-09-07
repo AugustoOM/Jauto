@@ -95,33 +95,14 @@ jobs:
         with: { workspaces: apps/desktop/src-tauri }
       - if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
-      - run: pnpm install --frozen-lockfile
-      - name: Import Windows signing certificate
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $certificatePath = Join-Path $env:RUNNER_TEMP 'jauto-release.pfx'
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
-          $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
-          $certificate = Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $password
-          $config = @{ bundle = @{ windows = @{ certificateThumbprint = $certificate.Thumbprint; digestAlgorithm = 'sha256'; timestampUrl = 'http://timestamp.digicert.com' } } }
-          $config | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/src-tauri/tauri.release.conf.json
-      - name: Import Apple Developer ID certificate
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          certificate_path="$RUNNER_TEMP/jauto-release.p12"
-          keychain_path="$RUNNER_TEMP/jauto-signing.keychain-db"
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
-          security create-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          security unlock-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
-          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
-          security list-keychain -d user -s "$keychain_path"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
-      - name: Build signed Windows installers
-        if: runner.os == 'Windows'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm --filter @jauto/core --filter @jauto/jff --filter @jauto/simulator --filter @jauto/file-io --filter @jauto/ui build
+
+      - name: Build native desktop app
         working-directory: apps/desktop
         run: pnpm tauri build --config src-tauri/tauri.release.conf.json
       - name: Build signed and notarized universal macOS installer
