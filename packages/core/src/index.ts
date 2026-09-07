@@ -67,6 +67,15 @@ export type {
   TransducerStep,
   TransducerResult,
 } from './transducers';
+export { tokenizeLSystem, deriveLSystem } from './l-system';
+export type { LSystem, LSystemProduction } from './l-system';
+export {
+  validateRegularPumping,
+  pumpRegular,
+  validateContextFreePumping,
+  pumpContextFree,
+} from './pumping-lemma';
+export type { RegularPumpingDecomposition, ContextFreePumpingDecomposition } from './pumping-lemma';
 
 export type { Command } from './commands/types';
 export { CommandHistory } from './commands/history';

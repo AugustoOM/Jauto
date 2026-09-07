@@ -4,6 +4,7 @@ import type {
   MealyMachine,
   MooreMachine,
   TransducerState,
+  LSystem,
 } from '@jauto/core';
 import { parseRegularExpression } from '@jauto/core';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
@@ -21,10 +22,23 @@ export interface GrammarDocument extends Grammar {
   readonly kind: 'grammar';
 }
 
+export interface LSystemDocument extends LSystem {
+  readonly kind: 'l-system';
+}
+
+export interface PumpingLemmaDocument {
+  readonly kind: 'pumping-lemma';
+  readonly family: 'regular' | 'context-free';
+  readonly fields: Readonly<Record<string, string>>;
+  readonly cases: readonly Readonly<Record<string, string>>[];
+}
+
 export type JFFDocument =
   | AnyAutomaton
   | RegularExpressionDocument
   | GrammarDocument
+  | LSystemDocument
+  | PumpingLemmaDocument
   | MealyMachine
   | MooreMachine;
 
@@ -34,7 +48,7 @@ const parser = new XMLParser({
   parseAttributeValue: false,
   trimValues: false,
   entityDecoder: xmlEntityDecoder,
-  isArray: (name) => ['production', 'state', 'transition'].includes(name),
+  isArray: (name) => ['production', 'parameter', 'case', 'state', 'transition'].includes(name),
 });
 
 function documentType(xml: string): string {
@@ -56,6 +70,9 @@ export function parseJFFDocument(xml: string): JFFDocument {
   checkKeys(root, ['?xml', 'structure'], 'document');
   const structure = xmlNode(root.structure, 'structure');
   if (type === 'mealy' || type === 'moore') return parseTransducer(structure, type);
+  if (type === 'lsystem') return parseLSystem(structure);
+  if (type === 'regular pumping lemma' || type === 'context-free pumping lemma')
+    return parsePumpingLemma(structure, type);
   if (type === 'grammar') {
     checkKeys(structure, ['type', 'production'], 'grammar');
     const productions = xmlElements(structure.production, 'production').map((production) => {
@@ -99,6 +116,8 @@ export function serializeJFFDocument(document: JFFDocument): string {
     ].join('\n');
   }
   if (document.kind === 'mealy' || document.kind === 'moore') return serializeTransducer(document);
+  if (document.kind === 'l-system') return serializeLSystem(document);
+  if (document.kind === 'pumping-lemma') return serializePumpingLemma(document);
   try {
     parseRegularExpression(document.expression);
   } catch (error) {
@@ -114,6 +133,127 @@ export function serializeJFFDocument(document: JFFDocument): string {
     `\t<expression>${escapeXml(document.expression)}</expression>`,
     '</structure>',
   ].join('\n');
+}
+
+function textValues(value: unknown, context: string): string[] {
+  return (Array.isArray(value) ? value : value === undefined ? [] : [value]).map((entry) =>
+    xmlText(entry, context),
+  );
+}
+
+function parseLSystem(structure: Record<string, unknown>): LSystemDocument {
+  checkKeys(structure, ['type', 'axiom', 'production', 'parameter'], 'L-system');
+  const axiom = xmlText(structure.axiom, 'axiom');
+  if (!axiom.trim()) throw new JFFParseError('L-system axiom cannot be empty');
+  const productions = xmlElements(structure.production, 'production').map((production) => {
+    checkKeys(production, ['left', 'right'], 'L-system production');
+    const left = xmlText(production.left, 'production left');
+    if (!left.trim()) throw new JFFParseError('L-system production left side cannot be empty');
+    return { left, replacements: textValues(production.right, 'production right') };
+  });
+  const parameters = Object.fromEntries(
+    xmlElements(structure.parameter, 'parameter').flatMap((parameter) => {
+      checkKeys(parameter, ['name', 'value'], 'L-system parameter');
+      const name = xmlText(parameter.name, 'parameter name');
+      return name ? [[name, xmlText(parameter.value, 'parameter value')]] : [];
+    }),
+  );
+  return {
+    kind: 'l-system',
+    axiom,
+    productions,
+    ...(Object.keys(parameters).length ? { parameters } : {}),
+  };
+}
+
+const pumpingFields = [
+  'name',
+  'first_player',
+  'm',
+  'w',
+  'i',
+  'xLength',
+  'yLength',
+  'uLength',
+  'vLength',
+  'attempt',
+] as const;
+const caseFields = ['caseULength', 'caseVLength', 'caseXLength', 'caseYLength', 'caseI'] as const;
+
+function parsePumpingLemma(
+  structure: Record<string, unknown>,
+  type: 'regular pumping lemma' | 'context-free pumping lemma',
+): PumpingLemmaDocument {
+  checkKeys(structure, ['type', ...pumpingFields, 'case'], 'pumping lemma');
+  const fields = Object.fromEntries(
+    pumpingFields
+      .filter((name) => name in structure)
+      .map((name) => [name, xmlText(structure[name], name)]),
+  );
+  const cases = xmlElements(structure.case, 'case').map((entry) => {
+    checkKeys(entry, caseFields, 'pumping lemma case');
+    return Object.fromEntries(
+      caseFields.filter((name) => name in entry).map((name) => [name, xmlText(entry[name], name)]),
+    );
+  });
+  return {
+    kind: 'pumping-lemma',
+    family: type === 'regular pumping lemma' ? 'regular' : 'context-free',
+    fields,
+    cases,
+  };
+}
+
+function serializeLSystem(document: LSystemDocument): string {
+  if (!document.axiom.trim()) throw new JFFSerializeError('L-system axiom cannot be empty');
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+    '<!--Created with Jauto.-->',
+    '<structure>',
+    '\t<type>lsystem</type>',
+    `\t<axiom>${escapeXml(document.axiom)}</axiom>`,
+  ];
+  for (const production of document.productions) {
+    if (!production.left.trim())
+      throw new JFFSerializeError('L-system production left side cannot be empty');
+    lines.push(
+      '\t<production>',
+      `\t\t<left>${escapeXml(production.left)}</left>`,
+      ...production.replacements.map((right) => `\t\t<right>${escapeXml(right)}</right>`),
+      '\t</production>',
+    );
+  }
+  for (const [name, value] of Object.entries(document.parameters ?? {}))
+    lines.push(
+      '\t<parameter>',
+      `\t\t<name>${escapeXml(name)}</name>`,
+      `\t\t<value>${escapeXml(value)}</value>`,
+      '\t</parameter>',
+    );
+  lines.push('</structure>');
+  return lines.join('\n');
+}
+
+function serializePumpingLemma(document: PumpingLemmaDocument): string {
+  const type =
+    document.family === 'regular' ? 'regular pumping lemma' : 'context-free pumping lemma';
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+    '<!--Created with Jauto.-->',
+    '<structure>',
+    `\t<type>${type}</type>`,
+  ];
+  for (const name of pumpingFields)
+    if (name in document.fields)
+      lines.push(`\t<${name}>${escapeXml(document.fields[name]!)}</${name}>`);
+  for (const entry of document.cases) {
+    lines.push('\t<case>');
+    for (const name of caseFields)
+      if (name in entry) lines.push(`\t\t<${name}>${escapeXml(entry[name]!)}</${name}>`);
+    lines.push('\t</case>');
+  }
+  lines.push('</structure>');
+  return lines.join('\n');
 }
 
 function parseTransducer(
