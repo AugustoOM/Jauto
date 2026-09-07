@@ -76,6 +76,7 @@ export {
   pumpContextFree,
 } from './pumping-lemma';
 export type { RegularPumpingDecomposition, ContextFreePumpingDecomposition } from './pumping-lemma';
+export type { TuringBlockState, TuringBlockTransition, TuringBlockMachine } from './turing-blocks';
 
 export type { Command } from './commands/types';
 export { CommandHistory } from './commands/history';

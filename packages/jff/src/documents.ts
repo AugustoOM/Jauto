@@ -5,12 +5,14 @@ import type {
   MooreMachine,
   TransducerState,
   LSystem,
+  TuringBlockMachine,
 } from '@jauto/core';
 import { parseRegularExpression } from '@jauto/core';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { JFFParseError, JFFSerializeError } from './errors';
 import { parseJFF } from './parser';
 import { serializeJFF } from './serializer';
+import { parseTuringBlockJFF, serializeTuringBlockJFF } from './building-blocks';
 import { checkKeys, escapeXml, xmlElements, xmlEntityDecoder, xmlNode, xmlText } from './xml';
 
 export interface RegularExpressionDocument {
@@ -39,6 +41,7 @@ export type JFFDocument =
   | GrammarDocument
   | LSystemDocument
   | PumpingLemmaDocument
+  | TuringBlockMachine
   | MealyMachine
   | MooreMachine;
 
@@ -65,6 +68,7 @@ function documentType(xml: string): string {
 /** Parses every JFF document family supported by Jauto. */
 export function parseJFFDocument(xml: string): JFFDocument {
   const type = documentType(xml);
+  if (type === 'turing' && /<block\b/u.test(xml)) return parseTuringBlockJFF(xml);
   if (type === 'fa' || type === 'pda' || type === 'turing') return parseJFF(xml).automaton;
   const root = xmlNode(parser.parse(xml), 'document');
   checkKeys(root, ['?xml', 'structure'], 'document');
@@ -98,6 +102,7 @@ export function parseJFFDocument(xml: string): JFFDocument {
 }
 
 export function serializeJFFDocument(document: JFFDocument): string {
+  if (document.kind === 'turing-blocks') return serializeTuringBlockJFF(document);
   if (document.kind === 'fa' || document.kind === 'pda' || document.kind === 'turing')
     return serializeJFF(document);
   if (document.kind === 'grammar') {

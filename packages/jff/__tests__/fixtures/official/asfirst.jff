@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?><!--Created with JFLAP 4.0b14.--><structure>
+	<type>turing</type>
+	<automaton>
+		<!--The list of states.-->
+		<block id="0" name="start">
+			<tag>start.jff</tag>
+			<x>159.0</x>
+			<y>152.0</y>
+			<initial/>
+		</block>
+		<block id="1" name="Rnot_a">
+			<tag>Rnot_a.jff</tag>
+			<x>192.0</x>
+			<y>65.0</y>
+		</block>
+		<block id="2" name="Rnot_b">
+			<tag>Rnot_b.jff2</tag>
+			<x>369.0</x>
+			<y>150.0</y>
+		</block>
+		<block id="3" name="b">
+			<tag>b.jff</tag>
+			<x>457.0</x>
+			<y>150.0</y>
+		</block>
+		<block id="4" name="L_a">
+			<tag>L_a.jff</tag>
+			<x>542.0</x>
+			<y>150.0</y>
+		</block>
+		<block id="5" name="R">
+			<tag>R.jff</tag>
+			<x>623.0</x>
+			<y>150.0</y>
+		</block>
+		<block id="6" name="a">
+			<tag>a.jff</tag>
+			<x>557.0</x>
+			<y>228.0</y>
+		</block>
+		<block id="7" name="L_blnk">
+			<tag>L_blnk.jff</tag>
+			<x>476.0</x>
+			<y>228.0</y>
+		</block>
+		<block id="8" name="R">
+			<tag>R.jff</tag>
+			<x>391.0</x>
+			<y>228.0</y>
+		</block>
+		<block id="9" name="Rnot_b">
+			<tag>Rnot_b.jff</tag>
+			<x>202.0</x>
+			<y>228.0</y>
+		</block>
+		<block id="10" name="b">
+			<tag>b.jff</tag>
+			<x>278.0</x>
+			<y>314.0</y>
+		</block>
+		<block id="11" name="L_blnk">
+			<tag>L_blnk.jff</tag>
+			<x>346.0</x>
+			<y>316.0</y>
+		</block>
+		<block id="12" name="R">
+			<tag>R.jff</tag>
+			<x>411.0</x>
+			<y>316.0</y>
+		</block>
+		<block id="13" name="a">
+			<tag>a.jff</tag>
+			<x>476.0</x>
+			<y>314.0</y>
+		</block>
+		<block id="14" name="L_blnk">
+			<tag>L_blnk.jff</tag>
+			<x>369.0</x>
+			<y>65.0</y>
+		</block>
+		<block id="15" name="R">
+			<tag>R.jff</tag>
+			<x>442.0</x>
+			<y>67.0</y>
+		</block>
+		<block id="16" name="halt">
+			<tag>halt.jff</tag>
+			<x>521.0</x>
+			<y>67.0</y>
+			<final/>
+		</block>
+		<!--The list of transitions.-->
+		<transition block="true">
+			<from>2</from>
+			<to>14</to>
+			<read></read>
+		</transition>
+		<transition block="true">
+			<from>9</from>
+			<to>10</to>
+			<read>a</read>
+		</transition>
+		<transition block="true">
+			<from>14</from>
+			<to>15</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>3</from>
+			<to>4</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>12</from>
+			<to>13</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>11</from>
+			<to>12</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>0</from>
+			<to>1</to>
+			<read>a</read>
+		</transition>
+		<transition block="true">
+			<from>10</from>
+			<to>11</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>15</from>
+			<to>16</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>9</from>
+			<to>14</to>
+			<read></read>
+		</transition>
+		<transition block="true">
+			<from>2</from>
+			<to>3</to>
+			<read>a</read>
+		</transition>
+		<transition block="true">
+			<from>4</from>
+			<to>5</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>13</from>
+			<to>7</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>6</from>
+			<to>7</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>5</from>
+			<to>6</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>8</from>
+			<to>0</to>
+			<read>a</read>
+		</transition>
+		<transition block="true">
+			<from>8</from>
+			<to>9</to>
+			<read>b</read>
+		</transition>
+		<transition block="true">
+			<from>7</from>
+			<to>8</to>
+			<read>~</read>
+		</transition>
+		<transition block="true">
+			<from>1</from>
+			<to>2</to>
+			<read>b</read>
+		</transition>
+		<transition block="true">
+			<from>0</from>
+			<to>9</to>
+			<read>b</read>
+		</transition>
+		<transition block="true">
+			<from>1</from>
+			<to>14</to>
+			<read></read>
+		</transition>
+		<!--The list of automata-->
+		<L_a.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>126.0</x>
+				<y>136.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>271.0</x>
+				<y>136.0</y>
+			</state>
+			<state id="2" name="">
+				<x>407.0</x>
+				<y>136.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>1</from>
+				<to>2</to>
+				<read>a</read>
+				<write>a</write>
+				<move>S</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>1</to>
+				<read>!a</read>
+				<write>~</write>
+				<move>L</move>
+			</transition>
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>L</move>
+			</transition>
+		</L_a.jff>
+		<R.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>107.0</x>
+				<y>134.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>261.0</x>
+				<y>134.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>R</move>
+			</transition>
+		</R.jff>
+		<L_blnk.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>126.0</x>
+				<y>136.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>271.0</x>
+				<y>136.0</y>
+			</state>
+			<state id="2" name="">
+				<x>407.0</x>
+				<y>136.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>1</from>
+				<to>1</to>
+				<read>!□</read>
+				<write>~</write>
+				<move>L</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>2</to>
+				<read></read>
+				<write></write>
+				<move>S</move>
+			</transition>
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>L</move>
+			</transition>
+		</L_blnk.jff>
+		<Rnot_b.jff2>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>82.0</x>
+				<y>141.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>226.0</x>
+				<y>141.0</y>
+			</state>
+			<state id="2" name="">
+				<x>353.0</x>
+				<y>141.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>R</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>2</to>
+				<read>!b</read>
+				<write>~</write>
+				<move>S</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>1</to>
+				<read>b</read>
+				<write>b</write>
+				<move>R</move>
+			</transition>
+		</Rnot_b.jff2>
+		<Rnot_b.jff>
+			<!--The list of states.-->
+			<state id="0" name="q0">
+				<x>82.0</x>
+				<y>141.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="move">
+				<x>226.0</x>
+				<y>141.0</y>
+				<label>move over b's</label>
+			</state>
+			<state id="2" name="end">
+				<x>353.0</x>
+				<y>141.0</y>
+				<label>stop on non-b symbol</label>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>1</from>
+				<to>2</to>
+				<read>!b</read>
+				<write>~</write>
+				<move>S</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>1</to>
+				<read>b</read>
+				<write>b</write>
+				<move>R</move>
+			</transition>
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>R</move>
+			</transition>
+		</Rnot_b.jff>
+		<a.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>86.0</x>
+				<y>124.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>224.0</x>
+				<y>124.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>a</write>
+				<move>S</move>
+			</transition>
+		</a.jff>
+		<b.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>82.0</x>
+				<y>131.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="">
+				<x>222.0</x>
+				<y>131.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>b</write>
+				<move>S</move>
+			</transition>
+		</b.jff>
+		<Rnot_a.jff>
+			<!--The list of states.-->
+			<state id="0" name="start">
+				<x>82.0</x>
+				<y>141.0</y>
+				<initial/>
+			</state>
+			<state id="1" name="2">
+				<x>226.0</x>
+				<y>141.0</y>
+			</state>
+			<state id="2" name="end">
+				<x>353.0</x>
+				<y>141.0</y>
+				<final/>
+			</state>
+			<!--The list of transitions.-->
+			<transition>
+				<from>1</from>
+				<to>2</to>
+				<read>!a</read>
+				<write>~</write>
+				<move>S</move>
+			</transition>
+			<transition>
+				<from>1</from>
+				<to>1</to>
+				<read>a</read>
+				<write>a</write>
+				<move>R</move>
+			</transition>
+			<transition>
+				<from>0</from>
+				<to>1</to>
+				<read>~</read>
+				<write>~</write>
+				<move>R</move>
+			</transition>
+		</Rnot_a.jff>
+		<halt.jff>
+			<!--The list of states.-->
+			<state id="0" name="">
+				<x>123.0</x>
+				<y>114.0</y>
+				<initial/>
+				<final/>
+			</state>
+		</halt.jff>
+		<start.jff>
+			<!--The list of states.-->
+			<state id="0" name="q0">
+				<x>126.0</x>
+				<y>149.0</y>
+				<initial/>
+				<final/>
+			</state>
+		</start.jff>
+	</automaton>
+</structure>

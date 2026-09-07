@@ -16,6 +16,7 @@ Files in this directory are retained unchanged from their public tutorial source
 | `lsystem1.jff`          | https://www.jflap.org/tutorial/lsystem/lsystem1.jff                      | 2026-09-06 | Official deterministic L-system tutorial example                                                                              |
 | `regUserFirst.jff`      | https://www.jflap.org/tutorial/pumpinglemma/regular/regUserFirst.jff     | 2026-09-06 | Official regular pumping-lemma activity                                                                                       |
 | `cfUserFirst.jff`       | https://www.jflap.org/tutorial/pumpinglemma/context_free/cfUserFirst.jff | 2026-09-06 | Official context-free pumping-lemma activity                                                                                  |
+| `asfirst.jff`           | https://www.jflap.org/jflapfiles/TMBBexamples/asfirst.jff                | 2026-09-06 | Official nested building-block TM; moves all `a` symbols before all `b` symbols                                               |
 
 The example's XML identifies JFLAP 6.1; it is published in the official tutorial and uses the PDA structure accepted by JFLAP 7.1. Its language follows from the transitions: the first `a` replaces `Z` with `aZ`, more `a`s push `a`, each `b` pops one `a`, and the final epsilon transition is enabled when `Z` is exposed.
 
