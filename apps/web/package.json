@@ -16,8 +16,7 @@
     "@jauto/ui": "workspace:*",
     "@lucide/vue": "^1.17.0",
     "pinia": "^3.0.4",
-    "vue": "^3.5.35",
-    "vue-router": "^5.1.0"
+    "vue": "^3.5.35"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
