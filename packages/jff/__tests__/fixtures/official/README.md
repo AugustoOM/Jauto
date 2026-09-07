@@ -11,6 +11,8 @@ Files in this directory are retained unchanged from their public tutorial source
 | `turingAnBnCnMulti.jff` | https://www.jflap.org/tutorial/turing/multi/turingAnBnCnMulti.jff | 2026-09-06 | Official three-tape TM for `a^n b^n c^n`                                                                                      |
 | `regExprToNfa.jff`      | https://www.jflap.org/tutorial/regular/regExprToNfa.jff           | 2026-09-06 | Official regular-expression document containing `a*b(a+b)`                                                                    |
 | `regGrammarToNFA.jff`   | https://www.jflap.org/tutorial/grammar/toFA/regGrammarToNFA.jff   | 2026-09-06 | Official right-linear grammar used by JFLAP's grammar-to-FA tutorial                                                          |
+| `mealyNOT.jff`          | https://www.jflap.org/tutorial/mealy/files/mealyNOT.jff           | 2026-09-06 | Official Mealy machine that complements each input bit                                                                        |
+| `mooreNOT.jff`          | https://www.jflap.org/tutorial/mealy/files/mooreNOT.jff           | 2026-09-06 | Official Moore machine that complements each input bit                                                                        |
 
 The example's XML identifies JFLAP 6.1; it is published in the official tutorial and uses the PDA structure accepted by JFLAP 7.1. Its language follows from the transitions: the first `a` replaces `Z` with `aZ`, more `a`s push `a`, each `b` pops one `a`, and the final epsilon transition is enabled when `Z` is exposed.
 

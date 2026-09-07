@@ -1,4 +1,10 @@
-import type { AnyAutomaton, Grammar } from '@jauto/core';
+import type {
+  AnyAutomaton,
+  Grammar,
+  MealyMachine,
+  MooreMachine,
+  TransducerState,
+} from '@jauto/core';
 import { parseRegularExpression } from '@jauto/core';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { JFFParseError, JFFSerializeError } from './errors';
@@ -15,7 +21,12 @@ export interface GrammarDocument extends Grammar {
   readonly kind: 'grammar';
 }
 
-export type JFFDocument = AnyAutomaton | RegularExpressionDocument | GrammarDocument;
+export type JFFDocument =
+  | AnyAutomaton
+  | RegularExpressionDocument
+  | GrammarDocument
+  | MealyMachine
+  | MooreMachine;
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -23,7 +34,7 @@ const parser = new XMLParser({
   parseAttributeValue: false,
   trimValues: false,
   entityDecoder: xmlEntityDecoder,
-  isArray: (name) => name === 'production',
+  isArray: (name) => ['production', 'state', 'transition'].includes(name),
 });
 
 function documentType(xml: string): string {
@@ -44,6 +55,7 @@ export function parseJFFDocument(xml: string): JFFDocument {
   const root = xmlNode(parser.parse(xml), 'document');
   checkKeys(root, ['?xml', 'structure'], 'document');
   const structure = xmlNode(root.structure, 'structure');
+  if (type === 'mealy' || type === 'moore') return parseTransducer(structure, type);
   if (type === 'grammar') {
     checkKeys(structure, ['type', 'production'], 'grammar');
     const productions = xmlElements(structure.production, 'production').map((production) => {
@@ -86,6 +98,7 @@ export function serializeJFFDocument(document: JFFDocument): string {
       '</structure>',
     ].join('\n');
   }
+  if (document.kind === 'mealy' || document.kind === 'moore') return serializeTransducer(document);
   try {
     parseRegularExpression(document.expression);
   } catch (error) {
@@ -101,4 +114,100 @@ export function serializeJFFDocument(document: JFFDocument): string {
     `\t<expression>${escapeXml(document.expression)}</expression>`,
     '</structure>',
   ].join('\n');
+}
+
+function parseTransducer(
+  structure: Record<string, unknown>,
+  kind: 'mealy' | 'moore',
+): MealyMachine | MooreMachine {
+  checkKeys(structure, ['type', 'automaton', 'state', 'transition'], kind);
+  const node =
+    'automaton' in structure ? xmlNode(structure.automaton, `${kind} automaton`) : structure;
+  checkKeys(
+    node,
+    node === structure ? ['type', 'state', 'transition'] : ['state', 'transition'],
+    kind,
+  );
+  const states = xmlElements(node.state, 'state').map((state) => {
+    checkKeys(state, ['@_id', '@_name', 'x', 'y', 'initial', 'output'], `${kind} state`);
+    const id = xmlText(state['@_id'], 'state id').trim();
+    if (!id) throw new JFFParseError('Transducer state missing id');
+    const common: TransducerState = {
+      id,
+      name: xmlText(state['@_name'], 'state name', `q${id}`),
+      x: Number(xmlText(state.x, 'x')),
+      y: Number(xmlText(state.y, 'y')),
+      isInitial: 'initial' in state,
+    };
+    if (!Number.isFinite(common.x) || !Number.isFinite(common.y))
+      throw new JFFParseError('Transducer coordinates must be finite');
+    return kind === 'moore' ? { ...common, output: xmlText(state.output, 'state output') } : common;
+  });
+  if (states.filter((state) => state.isInitial).length !== 1)
+    throw new JFFParseError('Transducer requires exactly one initial state');
+  const stateIds = new Set(states.map((state) => state.id));
+  const transitions = xmlElements(node.transition, 'transition').map((transition, index) => {
+    checkKeys(transition, ['from', 'to', 'read', 'transout'], `${kind} transition`);
+    const from = xmlText(transition.from, 'from').trim();
+    const to = xmlText(transition.to, 'to').trim();
+    if (!stateIds.has(from) || !stateIds.has(to))
+      throw new JFFParseError('Transducer transition references a missing state');
+    const common = { id: `${kind}_t${index}`, from, to, read: xmlText(transition.read, 'read') };
+    return kind === 'mealy'
+      ? { ...common, output: xmlText(transition.transout, 'transition output') }
+      : common;
+  });
+  return kind === 'mealy'
+    ? { kind, states, transitions: transitions as MealyMachine['transitions'] }
+    : {
+        kind,
+        states: states as MooreMachine['states'],
+        transitions: transitions as MooreMachine['transitions'],
+      };
+}
+
+function serializeTransducer(document: MealyMachine | MooreMachine): string {
+  if (document.states.filter((state) => state.isInitial).length !== 1)
+    throw new JFFSerializeError('Transducer requires exactly one initial state');
+  const ids = new Map(document.states.map((state, index) => [state.id, String(index)]));
+  if (
+    document.transitions.some((transition) => !ids.has(transition.from) || !ids.has(transition.to))
+  )
+    throw new JFFSerializeError('Transducer transition references a missing state');
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+    '<!--Created with Jauto.-->',
+    '<structure>',
+    `\t<type>${document.kind}</type>`,
+    '\t<automaton>',
+  ];
+  for (const state of document.states) {
+    lines.push(
+      `\t\t<state id="${ids.get(state.id)}" name="${escapeXml(state.name)}">`,
+      `\t\t\t<x>${state.x}</x>`,
+      `\t\t\t<y>${state.y}</y>`,
+    );
+    if (state.isInitial) lines.push('\t\t\t<initial/>');
+    if ('output' in state) lines.push(`\t\t\t<output>${escapeXml(state.output)}</output>`);
+    lines.push('\t\t</state>');
+  }
+  for (const transition of document.transitions) {
+    const target = document.states.find((state) => state.id === transition.to);
+    const output: string =
+      'output' in transition && typeof transition.output === 'string'
+        ? transition.output
+        : target && 'output' in target && typeof target.output === 'string'
+          ? target.output
+          : '';
+    lines.push(
+      '\t\t<transition>',
+      `\t\t\t<from>${ids.get(transition.from)}</from>`,
+      `\t\t\t<to>${ids.get(transition.to)}</to>`,
+      `\t\t\t<read>${escapeXml(transition.read)}</read>`,
+      `\t\t\t<transout>${escapeXml(output)}</transout>`,
+      '\t\t</transition>',
+    );
+  }
+  lines.push('\t</automaton>', '</structure>');
+  return lines.join('\n');
 }
