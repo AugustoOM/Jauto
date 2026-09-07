@@ -12,7 +12,8 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "check:release-version": "node scripts/check-release-version.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
