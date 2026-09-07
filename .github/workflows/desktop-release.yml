@@ -138,6 +138,20 @@ jobs:
             $signature = Get-AuthenticodeSignature $file.FullName
             if ($signature.Status -ne 'Valid') { throw "Invalid signature on $($file.Name): $($signature.Status)" }
           }
+      - name: Smoke-test installed Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem apps/desktop/src-tauri/target/release/bundle -Recurse -Filter *.msi | Select-Object -First 1
+          $installRoot = Join-Path $env:RUNNER_TEMP 'jauto-installed'
+          $process = Start-Process msiexec.exe -ArgumentList @('/a', $msi.FullName, '/qn', "TARGETDIR=$installRoot") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "MSI administrative install failed: $($process.ExitCode)" }
+          $executable = Get-ChildItem $installRoot -Recurse -Filter jauto.exe | Select-Object -First 1
+          if (-not $executable) { throw 'Installed jauto.exe was not found.' }
+          $app = Start-Process $executable.FullName -PassThru
+          Start-Sleep -Seconds 5
+          if ($app.HasExited -and $app.ExitCode -ne 0) { throw "Installed app exited with $($app.ExitCode)" }
+          if (-not $app.HasExited) { Stop-Process -Id $app.Id }
       - name: Verify macOS signature and notarization
         if: runner.os == 'macOS'
         shell: bash
@@ -148,6 +162,23 @@ jobs:
           test -n "$app" && test -n "$dmg"
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$dmg"
+      - name: Smoke-test installed macOS application
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle -name '*.dmg' -type f | head -1)
+          mount_point="$RUNNER_TEMP/jauto-dmg"
+          installed_app="$RUNNER_TEMP/Jauto.app"
+          mkdir -p "$mount_point"
+          hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse
+          cp -R "$mount_point/Jauto.app" "$installed_app"
+          hdiutil detach "$mount_point"
+          codesign --verify --deep --strict "$installed_app"
+          "$installed_app/Contents/MacOS/jauto" & app_pid=$!
+          sleep 5
+          kill -0 "$app_pid"
+          kill "$app_pid"
       - uses: actions/upload-artifact@v7
         with:
           name: jauto-${{ matrix.label }}
