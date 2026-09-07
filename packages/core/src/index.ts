@@ -45,6 +45,14 @@ export type { ValidationDiagnostic } from './validation';
 export { generateStateId, generateTransitionId, createIdGenerator, resetIdCounters } from './ids';
 export { getInputAlphabet, getStackAlphabet, getTapeAlphabet } from './alphabets';
 export type { IdGenerator } from './ids';
+export {
+  parseRegularExpression,
+  formatRegularExpression,
+  regularExpressionToNFA,
+  RegularExpressionSyntaxError,
+} from './regular-expression';
+export type { RegularExpression } from './regular-expression';
+export { determinize, minimizeDFA, finiteAutomatonToRegularExpression } from './fa-transformations';
 
 export type { Command } from './commands/types';
 export { CommandHistory } from './commands/history';
