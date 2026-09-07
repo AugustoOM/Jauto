@@ -4,6 +4,7 @@ import { MousePointer2, Circle, MoveRight, Trash2, Undo2, Redo2, Save } from '@l
 import { useDocumentStore, type EditorTool } from '../stores/document';
 import { useHistoryStore } from '../stores/history';
 import { saveDocumentKey } from '../injectionKeys';
+import ConversionTools from './ConversionTools.vue';
 
 const docStore = useDocumentStore();
 const historyStore = useHistoryStore();
@@ -58,6 +59,8 @@ function selectTool(tool: EditorTool) {
       </button>
     </div>
     <div class="toolbar__separator" />
+    <ConversionTools />
+    <div class="toolbar__separator" />
     <div class="toolbar__actions">
       <button
         class="toolbar__btn"
@@ -105,12 +108,23 @@ function selectTool(tool: EditorTool) {
   flex-wrap: wrap;
 }
 
-.toolbar__btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.toolbar__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
 
 @media (max-width: 620px) {
-  .toolbar { align-items: stretch; overflow-x: auto; }
-  .toolbar__tools, .toolbar__actions { flex-wrap: wrap; }
-  .toolbar__label { font-size: 11px; }
+  .toolbar {
+    align-items: stretch;
+    overflow-x: auto;
+  }
+  .toolbar__tools,
+  .toolbar__actions {
+    flex-wrap: wrap;
+  }
+  .toolbar__label {
+    font-size: 11px;
+  }
 }
 
 .toolbar__tools,
@@ -138,7 +152,9 @@ function selectTool(tool: EditorTool) {
   font-size: 12px;
   cursor: pointer;
   user-select: none;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .toolbar__btn:hover:not(:disabled) {

@@ -88,3 +88,4 @@ export { AddTransitionCommand } from './commands/add-transition';
 export { RemoveTransitionCommand } from './commands/remove-transition';
 export { UpdateTransitionCommand } from './commands/update-transition';
 export { BatchCommand } from './commands/batch';
+export { ReplaceAutomatonCommand } from './commands/replace-automaton';
