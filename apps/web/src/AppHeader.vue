@@ -25,7 +25,7 @@ function closeMenu() {
 
 async function goHome() {
   closeMenu();
-  commands.goHome();
+  await commands.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
@@ -109,9 +109,13 @@ function onRenameKey(e: KeyboardEvent) {
       <div class="app-header__menu-group">
         <button class="app-header__nav-btn" @click="toggleMenu('file')">File</button>
         <div v-if="openMenu === 'file'" class="app-header__dropdown">
-          <button class="app-header__dropdown-item" @click="newDocument('fa')">New DFA / NFA</button>
+          <button class="app-header__dropdown-item" @click="newDocument('fa')">
+            New DFA / NFA
+          </button>
           <button class="app-header__dropdown-item" @click="newDocument('pda')">New PDA</button>
-          <button class="app-header__dropdown-item" @click="newDocument('turing')">New Turing Machine</button>
+          <button class="app-header__dropdown-item" @click="newDocument('turing')">
+            New Turing Machine
+          </button>
           <div class="app-header__dropdown-sep" />
           <button class="app-header__dropdown-item" @click="openFile">Open .jff...</button>
           <button class="app-header__dropdown-item" @click="saveFile">Save as .jff</button>
@@ -323,7 +327,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__rename-btn:hover {

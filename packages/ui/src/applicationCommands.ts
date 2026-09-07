@@ -8,9 +8,16 @@ import { useHistoryStore } from './stores/history';
 import { useSimulationStore } from './stores/simulation';
 
 export type ApplicationMenuCommand =
-  | 'menu:home' | 'menu:new-fa' | 'menu:new-pda' | 'menu:new-tm'
-  | 'menu:open' | 'menu:save' | 'menu:save-as' | 'menu:export-png'
-  | 'menu:undo' | 'menu:redo';
+  | 'menu:home'
+  | 'menu:new-fa'
+  | 'menu:new-pda'
+  | 'menu:new-tm'
+  | 'menu:open'
+  | 'menu:save'
+  | 'menu:save-as'
+  | 'menu:export-png'
+  | 'menu:undo'
+  | 'menu:redo';
 
 export function useApplicationCommands(
   fileService: FileService,
@@ -32,7 +39,7 @@ export function useApplicationCommands(
         fileService,
         document.automaton,
         document.fileName ?? 'untitled.jff',
-        saveAs ? undefined : document.filePath ?? undefined,
+        saveAs ? undefined : (document.filePath ?? undefined),
       );
       if (result) document.markSaved(token, result.name, result.path);
       return result !== null;
@@ -44,7 +51,15 @@ export function useApplicationCommands(
 
   async function replaceDocument(action: () => void | Promise<void>): Promise<boolean> {
     document.flushInspectorEdits();
-    return runProtectedDocumentAction({ isDirty: document.isDirty, save: () => saveDocument(false), action });
+    if (document.currentView !== 'editor') {
+      await action();
+      return true;
+    }
+    return runProtectedDocumentAction({
+      isDirty: document.isDirty,
+      save: () => saveDocument(false),
+      action,
+    });
   }
 
   async function newDocument(kind: AutomatonKind): Promise<boolean> {
@@ -69,9 +84,17 @@ export function useApplicationCommands(
     });
   }
 
-  function goHome() {
-    simulation.stop();
-    document.goHome();
+  async function goHome(): Promise<boolean> {
+    document.flushInspectorEdits();
+    if (document.currentView !== 'editor') return true;
+    return runProtectedDocumentAction({
+      isDirty: document.isDirty,
+      save: () => saveDocument(false),
+      action: () => {
+        simulation.stop();
+        document.goHome();
+      },
+    });
   }
 
   async function exportPng(): Promise<boolean> {
@@ -90,17 +113,30 @@ export function useApplicationCommands(
 
   async function handleMenuCommand(command: string): Promise<boolean> {
     switch (command as ApplicationMenuCommand) {
-      case 'menu:home': goHome(); return true;
-      case 'menu:new-fa': return newDocument('fa');
-      case 'menu:new-pda': return newDocument('pda');
-      case 'menu:new-tm': return newDocument('turing');
-      case 'menu:open': return openDocument();
-      case 'menu:save': return saveDocument(false);
-      case 'menu:save-as': return saveDocument(true);
-      case 'menu:export-png': return exportPng();
-      case 'menu:undo': history.undo(); return true;
-      case 'menu:redo': history.redo(); return true;
-      default: return false;
+      case 'menu:home':
+        return goHome();
+      case 'menu:new-fa':
+        return newDocument('fa');
+      case 'menu:new-pda':
+        return newDocument('pda');
+      case 'menu:new-tm':
+        return newDocument('turing');
+      case 'menu:open':
+        return openDocument();
+      case 'menu:save':
+        return saveDocument(false);
+      case 'menu:save-as':
+        return saveDocument(true);
+      case 'menu:export-png':
+        return exportPng();
+      case 'menu:undo':
+        history.undo();
+        return true;
+      case 'menu:redo':
+        history.redo();
+        return true;
+      default:
+        return false;
     }
   }
 

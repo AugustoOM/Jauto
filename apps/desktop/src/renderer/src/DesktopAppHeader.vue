@@ -31,7 +31,7 @@ function closeMenu() {
 
 async function goBack() {
   closeMenu();
-  commands.goHome();
+  await commands.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
@@ -205,7 +205,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__back {
@@ -308,7 +310,11 @@ function onRenameKey(e: KeyboardEvent) {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.1s, border-color 0.1s, color 0.1s, opacity 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s,
+    opacity 0.1s;
 }
 
 .app-header__save:hover:not(:disabled) {
@@ -355,7 +361,9 @@ function onRenameKey(e: KeyboardEvent) {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .app-header__rename-btn:hover {

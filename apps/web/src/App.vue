@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue';
-import { HomePage, EditorView, createBeforeUnloadHandler, useApplicationCommands, useDocumentStore } from '@jauto/ui';
+import {
+  HomePage,
+  EditorView,
+  createBeforeUnloadHandler,
+  useApplicationCommands,
+  useDocumentStore,
+} from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
 import { WebFileService } from '@jauto/file-io';
 import AppHeader from './AppHeader.vue';
@@ -10,7 +16,9 @@ const docStore = useDocumentStore();
 const fileService = new WebFileService();
 const commands = useApplicationCommands(fileService);
 docStore.restoreRecoveryDraft();
-const beforeUnload = createBeforeUnloadHandler(() => docStore.isDirty);
+const beforeUnload = createBeforeUnloadHandler(
+  () => docStore.currentView === 'editor' && docStore.isDirty,
+);
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
 
@@ -28,7 +36,12 @@ async function handleOpen() {
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage :can-resume="docStore.canResume" @new="handleNew" @open="handleOpen" @resume="docStore.resume" />
+      <HomePage
+        :can-resume="docStore.canResume"
+        @new="handleNew"
+        @open="handleOpen"
+        @resume="docStore.resume"
+      />
     </template>
     <template v-else>
       <AppHeader />

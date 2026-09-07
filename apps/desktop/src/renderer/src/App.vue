@@ -22,7 +22,9 @@ let unlistenMenu: (() => void) | null = null;
 let unlistenClose: (() => void) | null = null;
 let closeApproved = false;
 docStore.restoreRecoveryDraft();
-const beforeUnload = createBeforeUnloadHandler(() => docStore.isDirty);
+const beforeUnload = createBeforeUnloadHandler(
+  () => docStore.currentView === 'editor' && docStore.isDirty,
+);
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', beforeUnload);
@@ -54,7 +56,7 @@ onMounted(async () => {
 
   const nativeWindow = getCurrentWindow();
   unlistenClose = await nativeWindow.onCloseRequested(async (event) => {
-    if (closeApproved || !docStore.isDirty) return;
+    if (closeApproved || docStore.currentView !== 'editor' || !docStore.isDirty) return;
     event.preventDefault();
     await runProtectedDocumentAction({
       isDirty: true,
@@ -84,7 +86,12 @@ function updateTitle() {
 <template>
   <div class="app">
     <template v-if="docStore.currentView === 'home'">
-      <HomePage :can-resume="docStore.canResume" @new="handleNew" @open="handleOpen" @resume="docStore.resume" />
+      <HomePage
+        :can-resume="docStore.canResume"
+        @new="handleNew"
+        @open="handleOpen"
+        @resume="docStore.resume"
+      />
     </template>
     <template v-else>
       <DesktopAppHeader />
