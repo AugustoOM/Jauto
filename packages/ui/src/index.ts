@@ -22,3 +22,5 @@ export { createBeforeUnloadHandler, requestDocumentLifecycleDecision, runProtect
 export type { DocumentLifecycleDecision, ConfirmFn } from './documentLifecycle';
 export { exportDiagramPng, getDiagramBounds } from './diagramExport';
 export type { DiagramExportOptions, DiagramBounds } from './diagramExport';
+export { useApplicationCommands } from './applicationCommands';
+export type { ApplicationMenuCommand } from './applicationCommands';

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@jauto/core": "workspace:*",
+    "@jauto/file-io": "workspace:*",
     "@jauto/simulator": "workspace:*",
     "@lucide/vue": "^1.17.0"
   },

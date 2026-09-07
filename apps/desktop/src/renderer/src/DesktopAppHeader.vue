@@ -2,23 +2,18 @@
 import { nextTick, ref } from 'vue';
 import {
   ArrowLeft,
-  exportDiagramPng,
   Pencil,
   Save,
   ThemeToggle,
-  runProtectedDocumentAction,
+  useApplicationCommands,
   useDocumentStore,
-  useHistoryStore,
-  useSimulationStore,
 } from '@jauto/ui';
 import type { AutomatonKind } from '@jauto/core';
-import { openAutomaton, saveAutomaton } from '@jauto/file-io';
 import { DesktopFileService } from './DesktopFileService';
 
 const docStore = useDocumentStore();
-const historyStore = useHistoryStore();
-const simStore = useSimulationStore();
 const fileService = new DesktopFileService();
+const commands = useApplicationCommands(fileService);
 const openMenu = ref<string | null>(null);
 const isRenaming = ref(false);
 const renameCancelled = ref(false);
@@ -34,68 +29,23 @@ function closeMenu() {
   openMenu.value = null;
 }
 
-async function saveForLifecycle(): Promise<boolean> {
-  try {
-    return await persistToDisk();
-  } catch (err) {
-    window.alert(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
-    return false;
-  }
-}
-
 async function goBack() {
   closeMenu();
-  simStore.stop();
-  docStore.goHome();
+  commands.goHome();
 }
 
 async function newDocument(kind: AutomatonKind) {
   closeMenu();
-  docStore.flushInspectorEdits();
-  await runProtectedDocumentAction({
-    isDirty: docStore.isDirty,
-    save: saveForLifecycle,
-    action: () => {
-      docStore.newDocument(kind);
-      historyStore.clear();
-      simStore.stop();
-    },
-  });
+  await commands.newDocument(kind);
 }
 
 async function openFile() {
   closeMenu();
-  docStore.flushInspectorEdits();
-  await runProtectedDocumentAction({
-    isDirty: docStore.isDirty,
-    save: saveForLifecycle,
-    action: async () => {
-      try {
-        const result = await openAutomaton(fileService);
-        if (result) {
-          docStore.loadAutomaton(result.automaton, result.fileName, result.warnings, result.filePath);
-          historyStore.clear();
-          simStore.stop();
-        }
-      } catch (err) {
-        window.alert(`Failed to open: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    },
-  });
+  await commands.openDocument();
 }
 
 async function persistToDisk(saveAs = false): Promise<boolean> {
-  docStore.flushInspectorEdits();
-  const name = docStore.fileName ?? 'untitled.jff';
-  const token = docStore.createRevisionToken();
-  const result = await saveAutomaton(
-    fileService,
-    docStore.automaton,
-    name,
-    saveAs ? undefined : docStore.filePath ?? undefined,
-  );
-  if (result) docStore.markSaved(token, result.name, result.path);
-  return result !== null;
+  return commands.saveDocument(saveAs);
 }
 
 async function saveFile() {
@@ -121,13 +71,7 @@ async function onSaveClick() {
 
 async function exportPNG() {
   closeMenu();
-  try {
-    const blob = await exportDiagramPng(docStore.automaton, { scale: 2, showGrid: false });
-    const name = (docStore.fileName ?? 'automaton').replace(/\.jff$/, '') + '.png';
-    await fileService.exportImage(blob, name);
-  } catch (err) {
-    window.alert(`Failed to export PNG: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  await commands.exportPng();
 }
 
 function startRename() {

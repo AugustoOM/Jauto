@@ -111,6 +111,13 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
     )?;
     let open = MenuItem::with_id(app, "menu:open", "Open...", true, Some("CmdOrCtrl+O"))?;
     let save = MenuItem::with_id(app, "menu:save", "Save", true, Some("CmdOrCtrl+S"))?;
+    let save_as = MenuItem::with_id(
+        app,
+        "menu:save-as",
+        "Save As...",
+        true,
+        Some("CmdOrCtrl+Shift+S"),
+    )?;
     let export_png =
         MenuItem::with_id(app, "menu:export-png", "Export PNG...", true, None::<&str>)?;
     let undo = MenuItem::with_id(app, "menu:undo", "Undo", true, Some("CmdOrCtrl+Z"))?;
@@ -131,6 +138,7 @@ fn build_menu(app: &mut tauri::App) -> tauri::Result<()> {
         .separator()
         .item(&open)
         .item(&save)
+        .item(&save_as)
         .separator()
         .item(&export_png)
         .separator()

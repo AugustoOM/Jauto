@@ -208,6 +208,9 @@ importers:
       '@jauto/core':
         specifier: workspace:*
         version: link:../core
+      '@jauto/file-io':
+        specifier: workspace:*
+        version: link:../file-io
       '@jauto/simulator':
         specifier: workspace:*
         version: link:../simulator
