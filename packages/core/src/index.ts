@@ -53,6 +53,8 @@ export {
 } from './regular-expression';
 export type { RegularExpression } from './regular-expression';
 export { determinize, minimizeDFA, finiteAutomatonToRegularExpression } from './fa-transformations';
+export { classifyGrammar, recognizeContextFree, recognizeCYK } from './grammar';
+export type { Grammar, GrammarProduction, GrammarClassification } from './grammar';
 
 export type { Command } from './commands/types';
 export { CommandHistory } from './commands/history';

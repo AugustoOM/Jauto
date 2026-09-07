@@ -1,17 +1,21 @@
-import type { AnyAutomaton } from '@jauto/core';
+import type { AnyAutomaton, Grammar } from '@jauto/core';
 import { parseRegularExpression } from '@jauto/core';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { JFFParseError, JFFSerializeError } from './errors';
 import { parseJFF } from './parser';
 import { serializeJFF } from './serializer';
-import { checkKeys, escapeXml, xmlEntityDecoder, xmlNode, xmlText } from './xml';
+import { checkKeys, escapeXml, xmlElements, xmlEntityDecoder, xmlNode, xmlText } from './xml';
 
 export interface RegularExpressionDocument {
   readonly kind: 'regular-expression';
   readonly expression: string;
 }
 
-export type JFFDocument = AnyAutomaton | RegularExpressionDocument;
+export interface GrammarDocument extends Grammar {
+  readonly kind: 'grammar';
+}
+
+export type JFFDocument = AnyAutomaton | RegularExpressionDocument | GrammarDocument;
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -19,6 +23,7 @@ const parser = new XMLParser({
   parseAttributeValue: false,
   trimValues: false,
   entityDecoder: xmlEntityDecoder,
+  isArray: (name) => name === 'production',
 });
 
 function documentType(xml: string): string {
@@ -36,10 +41,23 @@ function documentType(xml: string): string {
 export function parseJFFDocument(xml: string): JFFDocument {
   const type = documentType(xml);
   if (type === 'fa' || type === 'pda' || type === 'turing') return parseJFF(xml).automaton;
-  if (type !== 're') throw new JFFParseError(`Unsupported JFF document type: "${type}"`);
   const root = xmlNode(parser.parse(xml), 'document');
   checkKeys(root, ['?xml', 'structure'], 'document');
   const structure = xmlNode(root.structure, 'structure');
+  if (type === 'grammar') {
+    checkKeys(structure, ['type', 'production'], 'grammar');
+    const productions = xmlElements(structure.production, 'production').map((production) => {
+      checkKeys(production, ['left', 'right'], 'production');
+      const left = xmlText(production.left, 'production left');
+      if (!left) throw new JFFParseError('Grammar production left side cannot be empty');
+      return {
+        left,
+        right: 'right' in production ? xmlText(production.right, 'production right') : '',
+      };
+    });
+    return { kind: 'grammar', startSymbol: productions[0]?.left ?? 'S', productions };
+  }
+  if (type !== 're') throw new JFFParseError(`Unsupported JFF document type: "${type}"`);
   checkKeys(structure, ['type', 'expression'], 'regular expression');
   const expression = 'expression' in structure ? xmlText(structure.expression, 'expression') : '';
   try {
@@ -51,7 +69,23 @@ export function parseJFFDocument(xml: string): JFFDocument {
 }
 
 export function serializeJFFDocument(document: JFFDocument): string {
-  if (document.kind !== 'regular-expression') return serializeJFF(document);
+  if (document.kind === 'fa' || document.kind === 'pda' || document.kind === 'turing')
+    return serializeJFF(document);
+  if (document.kind === 'grammar') {
+    if (document.productions.some((production) => !production.left))
+      throw new JFFSerializeError('Grammar production left side cannot be empty');
+    return [
+      '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+      '<!--Created with Jauto.-->',
+      '<structure>',
+      '\t<type>grammar</type>',
+      ...document.productions.map(
+        (production) =>
+          `\t<production><left>${escapeXml(production.left)}</left>${production.right ? `<right>${escapeXml(production.right)}</right>` : '<right/>'}</production>`,
+      ),
+      '</structure>',
+    ].join('\n');
+  }
   try {
     parseRegularExpression(document.expression);
   } catch (error) {
