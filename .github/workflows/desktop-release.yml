@@ -55,15 +55,6 @@ jobs:
         include:
           - { label: windows-x64, os: windows-latest }
           - { label: macos-universal, os: macos-latest }
-    env:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -86,6 +77,9 @@ jobs:
       - name: Configure optional Windows signing
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $values = @($env:WINDOWS_CERTIFICATE, $env:WINDOWS_CERTIFICATE_PASSWORD)
           $configured = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
@@ -107,6 +101,13 @@ jobs:
       - name: Configure optional Apple signing
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           values=("$APPLE_CERTIFICATE" "$APPLE_CERTIFICATE_PASSWORD" "$APPLE_SIGNING_IDENTITY" "$APPLE_ID" "$APPLE_PASSWORD" "$APPLE_TEAM_ID")
@@ -122,22 +123,15 @@ jobs:
             exit 1
           else
             echo "APPLE_SIGNING_MODE=developer-id" >> "$GITHUB_ENV"
+            {
+              printf 'APPLE_CERTIFICATE=%s\n' "$APPLE_CERTIFICATE"
+              printf 'APPLE_CERTIFICATE_PASSWORD=%s\n' "$APPLE_CERTIFICATE_PASSWORD"
+              printf 'APPLE_SIGNING_IDENTITY=%s\n' "$APPLE_SIGNING_IDENTITY"
+              printf 'APPLE_ID=%s\n' "$APPLE_ID"
+              printf 'APPLE_PASSWORD=%s\n' "$APPLE_PASSWORD"
+              printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID"
+            } >> "$GITHUB_ENV"
           fi
-
-      - name: Import Apple Developer ID certificate
-        if: runner.os == 'macOS' && env.APPLE_SIGNING_MODE == 'developer-id'
-        shell: bash
-        run: |
-          set -euo pipefail
-          certificate_path="$RUNNER_TEMP/jauto-release.p12"
-          keychain_path="$RUNNER_TEMP/jauto-signing.keychain-db"
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
-          security create-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          security unlock-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
-          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
-          security list-keychain -d user -s "$keychain_path"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
 
       - name: Build Windows installers
         if: runner.os == 'Windows'
