@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/desktop-release.yml'
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 env:
@@ -146,8 +155,14 @@ jobs:
 
       - name: Build universal macOS installer
         if: runner.os == 'macOS'
+        shell: bash
         working-directory: apps/desktop
-        run: pnpm tauri build --target universal-apple-darwin
+        run: |
+          if [[ "$APPLE_SIGNING_MODE" == "developer-id" ]]; then
+            pnpm tauri build --target universal-apple-darwin
+          else
+            pnpm tauri build --target universal-apple-darwin --config src-tauri/tauri.adhoc.conf.json
+          fi
 
       - name: Verify Windows installers and configured signatures
         if: runner.os == 'Windows'
@@ -216,6 +231,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     env:
