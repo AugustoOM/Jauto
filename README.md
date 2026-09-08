@@ -101,9 +101,10 @@ notes and replaces its assets.
 See [the release runbook](docs/RELEASING.md) for required signing secrets,
 quality gates, checksums, and signature verification.
 
-Stable desktop releases require Windows signing and Apple Developer ID signing/notarization
-credentials in GitHub Actions. The release workflow refuses to publish stable installers when
-those credentials are unavailable.
+Windows Authenticode signing and Apple Developer ID signing/notarization are
+applied when their complete credential sets are configured in GitHub Actions.
+Otherwise, the workflow publishes unsigned Windows installers and an ad-hoc
+signed macOS installer.
 
 ## Project Structure
 

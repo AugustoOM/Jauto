@@ -1,4 +1,4 @@
-name: Signed desktop release
+name: Desktop release
 
 on:
   push:
@@ -18,31 +18,14 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate release metadata and credentials
+    name: Validate release metadata
     runs-on: ubuntu-latest
-    env:
-      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with: { node-version: 22 }
       - name: Match tag to every project version
         run: node scripts/check-release-version.mjs "$RELEASE_TAG"
-      - name: Require signing and notarization credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          required=(WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID)
-          for name in "${required[@]}"; do
-            if [ -z "${!name:-}" ]; then echo "Missing required release secret: $name"; exit 1; fi
-          done
 
   quality:
     name: Release quality gate
@@ -63,7 +46,7 @@ jobs:
       - run: pnpm --filter @jauto/desktop build:frontend
 
   build:
-    name: Build and sign ${{ matrix.label }}
+    name: Build ${{ matrix.label }}
     needs: [validate, quality]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -100,22 +83,89 @@ jobs:
       - name: Build workspace packages
         run: pnpm --filter @jauto/core --filter @jauto/jff --filter @jauto/simulator --filter @jauto/file-io --filter @jauto/ui build
 
-      - name: Build native desktop app
+      - name: Configure optional Windows signing
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $values = @($env:WINDOWS_CERTIFICATE, $env:WINDOWS_CERTIFICATE_PASSWORD)
+          $configured = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($configured -eq 0) {
+            'WINDOWS_SIGNING_MODE=unsigned' | Out-File -FilePath $env:GITHUB_ENV -Append
+            Write-Output 'Windows signing credentials are unavailable; building unsigned installers.'
+          } elseif ($configured -ne $values.Count) {
+            throw 'Windows signing is only partially configured. Set both WINDOWS_CERTIFICATE and WINDOWS_CERTIFICATE_PASSWORD, or leave both unset.'
+          } else {
+            $certificatePath = Join-Path $env:RUNNER_TEMP 'jauto-release.pfx'
+            [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+            $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+            $certificate = Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+            $config = @{ bundle = @{ windows = @{ certificateThumbprint = $certificate.Thumbprint; digestAlgorithm = 'sha256'; timestampUrl = 'http://timestamp.digicert.com' } } }
+            $config | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/src-tauri/tauri.release.conf.json
+            'WINDOWS_SIGNING_MODE=signed' | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
+      - name: Configure optional Apple signing
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          values=("$APPLE_CERTIFICATE" "$APPLE_CERTIFICATE_PASSWORD" "$APPLE_SIGNING_IDENTITY" "$APPLE_ID" "$APPLE_PASSWORD" "$APPLE_TEAM_ID")
+          configured=0
+          for value in "${values[@]}"; do
+            [[ -n "$value" ]] && configured=$((configured + 1))
+          done
+          if [[ "$configured" -eq 0 ]]; then
+            echo "APPLE_SIGNING_MODE=adhoc" >> "$GITHUB_ENV"
+            echo "Apple signing credentials are unavailable; building an ad-hoc signed installer."
+          elif [[ "$configured" -ne "${#values[@]}" ]]; then
+            echo "Apple signing is only partially configured. Set all Apple release secrets, or leave all of them unset." >&2
+            exit 1
+          else
+            echo "APPLE_SIGNING_MODE=developer-id" >> "$GITHUB_ENV"
+          fi
+
+      - name: Import Apple Developer ID certificate
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_MODE == 'developer-id'
+        shell: bash
+        run: |
+          set -euo pipefail
+          certificate_path="$RUNNER_TEMP/jauto-release.p12"
+          keychain_path="$RUNNER_TEMP/jauto-signing.keychain-db"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security list-keychain -d user -s "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_CERTIFICATE_PASSWORD" "$keychain_path"
+
+      - name: Build Windows installers
+        if: runner.os == 'Windows'
+        shell: pwsh
         working-directory: apps/desktop
-        run: pnpm tauri build --config src-tauri/tauri.release.conf.json
-      - name: Build signed and notarized universal macOS installer
+        run: |
+          if ($env:WINDOWS_SIGNING_MODE -eq 'signed') {
+            pnpm tauri build --config src-tauri/tauri.release.conf.json
+          } else {
+            pnpm tauri build
+          }
+
+      - name: Build universal macOS installer
         if: runner.os == 'macOS'
         working-directory: apps/desktop
         run: pnpm tauri build --target universal-apple-darwin
-      - name: Verify Windows signatures and installers
+
+      - name: Verify Windows installers and configured signatures
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $files = Get-ChildItem apps/desktop/src-tauri/target/release/bundle -Recurse -Include *.exe,*.msi
           if (-not $files) { throw 'No Windows installers were produced.' }
-          foreach ($file in $files) {
-            $signature = Get-AuthenticodeSignature $file.FullName
-            if ($signature.Status -ne 'Valid') { throw "Invalid signature on $($file.Name): $($signature.Status)" }
+          if ($env:WINDOWS_SIGNING_MODE -eq 'signed') {
+            foreach ($file in $files) {
+              $signature = Get-AuthenticodeSignature $file.FullName
+              if ($signature.Status -ne 'Valid') { throw "Invalid signature on $($file.Name): $($signature.Status)" }
+            }
           }
       - name: Smoke-test installed Windows application
         if: runner.os == 'Windows'
@@ -131,7 +181,7 @@ jobs:
           Start-Sleep -Seconds 5
           if ($app.HasExited -and $app.ExitCode -ne 0) { throw "Installed app exited with $($app.ExitCode)" }
           if (-not $app.HasExited) { Stop-Process -Id $app.Id }
-      - name: Verify macOS signature and notarization
+      - name: Verify macOS signature and optional notarization
         if: runner.os == 'macOS'
         shell: bash
         run: |
@@ -140,7 +190,10 @@ jobs:
           dmg=$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle -name '*.dmg' -type f | head -1)
           test -n "$app" && test -n "$dmg"
           codesign --verify --deep --strict --verbose=2 "$app"
-          xcrun stapler validate "$dmg"
+          if [[ "$APPLE_SIGNING_MODE" == "developer-id" ]]; then
+            spctl --assess --type execute --verbose=2 "$app"
+            xcrun stapler validate "$dmg"
+          fi
       - name: Smoke-test installed macOS application
         if: runner.os == 'macOS'
         shell: bash
