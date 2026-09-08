@@ -146,8 +146,14 @@ jobs:
 
       - name: Build universal macOS installer
         if: runner.os == 'macOS'
+        shell: bash
         working-directory: apps/desktop
-        run: pnpm tauri build --target universal-apple-darwin
+        run: |
+          if [[ "$APPLE_SIGNING_MODE" == "developer-id" ]]; then
+            pnpm tauri build --target universal-apple-darwin
+          else
+            pnpm tauri build --target universal-apple-darwin --config src-tauri/tauri.adhoc.conf.json
+          fi
 
       - name: Verify Windows installers and configured signatures
         if: runner.os == 'Windows'
