@@ -86,16 +86,8 @@ Native desktop support currently includes:
 Native Windows and macOS installers are published as GitHub Release assets from
 this repository.
 
-To publish a downloadable desktop release:
-
-1. Update the app version in `apps/desktop/src-tauri/tauri.conf.json` and
-   `apps/desktop/src-tauri/Cargo.toml`.
-2. Create and push a version tag:
-
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-```
+Version `0.3.0` is published automatically after a push or merge to `master`.
+The release can also be re-run manually from the GitHub Actions page.
 
 The `Desktop native releases` workflow builds:
 
@@ -103,8 +95,8 @@ The `Desktop native releases` workflow builds:
 - macOS universal installers for Intel and Apple Silicon on `macos-latest`
 
 The generated `.msi`, `.exe`, and `.dmg` files are attached to
-the GitHub Release for that tag. The workflow can also be run manually from
-GitHub Actions with a `release_tag` value.
+the `v0.3.0` GitHub Release. If the workflow is re-run, it updates the release
+notes and replaces its assets.
 
 See [the release runbook](docs/RELEASING.md) for required signing secrets,
 quality gates, checksums, and signature verification.
