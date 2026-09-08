@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/desktop-release.yml'
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 env:
@@ -222,6 +231,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     env:
