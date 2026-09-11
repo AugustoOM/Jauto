@@ -378,13 +378,13 @@ function remainingText(config: Record<string, unknown>): string {
 .sim-controls__branch {
   display: grid;
   gap: 2px;
-  min-width: 180px;
-  padding: 6px 8px;
+  min-width: 280px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   color: var(--color-text-secondary);
-  font: 11px/1.35 var(--font-mono);
+  font: 12px/1.45 var(--font-mono);
 }
 
 .sim-controls__tape {
@@ -394,10 +394,11 @@ function remainingText(config: Record<string, unknown>): string {
 }
 
 .sim-controls__tape b {
-  min-width: 17px;
-  padding: 1px 3px;
+  min-width: 28px;
+  padding: 4px 6px;
   border: 1px solid var(--color-border);
   text-align: center;
+  font-size: 13px;
 }
 
 .sim-controls__tape .sim-controls__head {
